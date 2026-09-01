@@ -1,0 +1,8 @@
+Warning: The file properties have changed:
+         File: /usr/sbin/sshd
+         Current hash: abc
+         Stored hash : def
+Warning: The file '/usr/sbin/cron' exists on the system, but it is not present in the 'rkhunter.dat' file.
+System checks summary
+=====================
+Suspect files:            2

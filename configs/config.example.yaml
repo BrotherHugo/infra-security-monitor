@@ -1,0 +1,62 @@
+keep_history_days: 30
+# timezone: Europe/Barcelona       # optional; missing/empty = host local time
+# hostname: web-1               # optional; missing/empty = OS hostname
+
+modules:
+  # enabled:                    # optional; missing/empty = all modules
+  #   - fail2ban
+  #   - auditd
+  #   - rkhunter
+  #   - chkrootkit
+  #   - lynis
+  #   - unattended-upgrades
+  fail2ban:
+    jails:
+      - sshd
+      - nginx-limit-req
+  rkhunter:
+    # report_path: /var/log/rkhunter.log
+    launch_params:
+      - --check
+      - --skip-keypress
+  chkrootkit:
+    # report_path: /var/log/chkrootkit.log
+    launch_params:
+      - -q
+  lynis:
+    # report_path: /var/log/lynis-report.dat
+    timeout_minutes: 20
+  unattended_upgrades:
+    log_path: /var/log/unattended-upgrades/unattended-upgrades.log
+    tail_lines: 30
+    stale_days: 3
+
+reporting:
+  time:
+    - "03:30"
+  channels:
+    file:
+      save_to_dir: /var/lib/ism/reports
+    # telegram:                 # optional: Bot API; long report split into ≤4096-byte parts
+    #   token: "..."
+    #   chat_id: "..."
+    #   message_thread_id: 123  # optional: forum topic ID
+    # email:                    # optional: SMTP text/plain, all to_emails in one message
+    #   host: "smtp.example.com"
+    #   port: "587"             # 587 + use_tls (STARTTLS) or 465 + use_ssl
+    #   user: "..."
+    #   password: "..."
+    #   use_tls: true           # do not combine with use_ssl
+    #   use_ssl: false
+    #   from_email: "ism@example.com"
+    #   to_emails:
+    #     - "admin@example.com"
+
+# analyzers:                    # optional; section presence = enabled
+#   prompt: |                   # optional; fully replaces DefaultPrompt
+#   custom_rules: |             # optional; appended under Custom rules:
+#     Write the entire answer in Russian.
+#   timeout_seconds: 120        # per analyzer HTTP call
+#   google_ai:
+#     api_key: "..."
+#     model: gemini-2.5-flash   # optional; default gemini-2.5-flash

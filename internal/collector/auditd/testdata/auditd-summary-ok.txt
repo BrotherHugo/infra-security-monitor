@@ -1,0 +1,19 @@
+Summary Report
+======================
+Range of time/begin: 08/12/2026 00:00:00
+Range of time/end:   08/12/2026 23:59:59
+
+  Number of failed logins:                           0
+  Number of changes to accounts, groups, or roles:   0
+  Number of changes in configuration:                0
+  Number of anomaly events:                          0
+  Number of responses to anomaly events:             0
+  Number of AVC's:                                   0
+  Number of integrity events:                        0
+  Number of failed authentications:                  0
+  Number of users:                                   3
+  Number of terminals:                               1
+  Number of host names:                              1
+  Number of executables:                             42
+  Number of files:                                   15
+  Number of failed syscalls:                         0

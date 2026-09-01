@@ -1,0 +1,7 @@
+Anomaly Report
+===================================
+# date time type exe hostname auid event
+===================================
+1. 10/15/2021 08:24:43 32 login /usr/sbin/sshd web01 1000 256
+2. 10/15/2021 08:25:01 31 login /usr/sbin/sshd web01 1000 257
+3. 10/15/2021 09:01:12 anomaly score:28 type:exec anomaly /usr/bin/bash web01 -1 258
