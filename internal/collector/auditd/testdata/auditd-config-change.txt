@@ -1,0 +1,4 @@
+Config Change Report
+======================
+# date time file event
+08/12/2026 14:22:01 /etc/fail2ban/jail.local MODIFY fail2ban_config

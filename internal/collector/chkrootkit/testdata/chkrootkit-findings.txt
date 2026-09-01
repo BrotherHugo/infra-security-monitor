@@ -1,0 +1,6 @@
+=== chkrootkit check started at Mon Aug 12 06:35:01 UTC 2026 ===
+Checking `sniffer'...                                     not infected
+Checking `sniffer'...                                     PACKET SNIFFER(/usr/lib/systemd/systemd-networkd)
+Checking `chkutmp'...                                      not infected
+Checking `fail2ban'...                                     INFECTED (TESTS MAY BE RUNNING: /var/lib/fail2ban/tests/files/apache/invalid/.htaccess)
+=== chkrootkit check completed at Mon Aug 12 06:36:00 UTC 2026 ===

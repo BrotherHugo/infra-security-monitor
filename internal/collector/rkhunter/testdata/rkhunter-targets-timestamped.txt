@@ -1,0 +1,17 @@
+=== rkhunter check started at Mon Aug 12 06:30:01 UTC 2026 ===
+Performing file properties checks
+[20:15:46]   /usr/sbin/cron [ Warning ]
+[20:16:06]   /usr/bin/awk [ Warning ]
+[20:16:10]   /usr/bin/curl [ Warning ]
+Performing system checks
+[20:21:26]   Checking if SSH root access is allowed [ Warning ]
+[20:21:26]   Checking if SSH protocol v1 is allowed [ Warning ]
+[20:21:35]   Checking for hidden files and directories [ Warning ]
+System checks summary
+=====================
+Files checked:            142
+Suspect files:            3
+Rootkit checks:           0
+Possible rootkits:        0
+Number of warnings:       0
+=== rkhunter check completed at Mon Aug 12 06:31:02 UTC 2026 ===

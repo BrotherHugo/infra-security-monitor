@@ -1,0 +1,12 @@
+Anomaly Report
+=========================================
+# date time type exe term host auid event
+=========================================
+1. 07/30/2026 02:00:03 ANOM_PROMISCUOUS /usr/bin/dockerd (none) ? -1 100264
+2. 07/30/2026 02:00:03 ANOM_PROMISCUOUS /usr/bin/dockerd (none) ? -1 100270
+3. 07/30/2026 02:00:03 ANOM_PROMISCUOUS /usr/bin/dockerd (none) ? -1 100273
+4. 08/08/2026 02:00:03 ANOM_PROMISCUOUS /usr/bin/dockerd (none) ? -1 77303
+5. 08/14/2026 19:31:20 ANOM_PROMISCUOUS /usr/bin/dockerd (deleted) (none) ? -1 44094
+6. 08/14/2026 19:31:23 ANOM_PROMISCUOUS /usr/bin/dockerd (none) ? -1 44230
+7. 08/14/2026 19:33:50 ANOM_PROMISCUOUS /usr/bin/dockerd (none) ? -1 44515
+8. 08/14/2026 19:34:22 ANOM_PROMISCUOUS /usr/bin/dockerd (none) ? -1 295

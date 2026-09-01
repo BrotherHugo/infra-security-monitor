@@ -1,0 +1,11 @@
+=== rkhunter check started at Mon Aug 12 06:30:01 UTC 2026 ===
+Warning: The file properties have changed on:
+         file: /usr/bin/ssh
+System checks summary
+=====================
+Number of files:          142
+Suspect files:            0
+Rootkit checks:           0
+Possible rootkits:        0
+Number of warnings:       1
+=== rkhunter check completed at Mon Aug 12 06:31:02 UTC 2026 ===

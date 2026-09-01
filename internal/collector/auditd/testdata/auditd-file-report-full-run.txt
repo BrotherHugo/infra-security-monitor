@@ -1,0 +1,16 @@
+File Report
+===============================================
+# date time file syscall success exe auid event
+===============================================
+1. 07/29/2026 06:01:23 /etc/ 44 yes /usr/sbin/auditctl -1 91786
+2. 07/29/2026 06:01:23 /etc/ 44 yes /usr/sbin/auditctl -1 91787
+3. 07/29/2026 06:01:23 /etc/ 44 yes /usr/sbin/auditctl -1 91788
+4. 07/29/2026 06:01:23 /etc/nginx/nginx.conf 44 yes /usr/sbin/auditctl -1 91789
+5. 07/30/2026 02:00:20 /etc/ 44 yes /usr/sbin/auditctl -1 70
+6. 07/30/2026 02:00:20 /etc/ 44 yes /usr/sbin/auditctl -1 71
+7. 07/30/2026 02:00:20 /etc/ 44 yes /usr/sbin/auditctl -1 73
+8. 07/30/2026 02:00:20 /etc/nginx/nginx.conf 44 yes /usr/sbin/auditctl -1 74
+9. 08/08/2026 02:00:19 /etc/ 44 yes /usr/sbin/auditctl -1 125
+10. 08/08/2026 02:00:19 /etc/ 44 yes /usr/sbin/auditctl -1 126
+11. 08/08/2026 02:00:19 /etc/ 44 yes /usr/sbin/auditctl -1 127
+12. 08/08/2026 02:00:19 /etc/nginx/nginx.conf 44 yes /usr/sbin/auditctl -1 128
