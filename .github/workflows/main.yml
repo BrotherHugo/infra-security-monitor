@@ -36,7 +36,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           changelog-file: CHANGELOG.md
           update-file: internal/version/version.go
-          allow-initial-development-versions: true
+          allow-initial-development-versions: false
           prepend: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
