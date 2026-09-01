@@ -1,0 +1,17 @@
+[Unit]
+Description=Infra Security Monitor (ismd)
+Documentation=file:/usr/share/doc/ismd/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/ismd --config /etc/ism/config.yaml --db /var/lib/ism/ism.db
+Restart=on-failure
+RestartSec=30
+
+# Collectors read logs and run auditd/lynis/chkrootkit; daemon runs as root.
+# Telegram/email secrets live in /etc/ism/config.yaml (chmod 600).
+
+[Install]
+WantedBy=multi-user.target

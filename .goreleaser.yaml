@@ -1,0 +1,65 @@
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: ismd
+    main: ./cmd/ismd
+    binary: ismd
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s
+      - -w
+      - -X=github.com/BrotherHugo/infra-security-monitor/internal/version.Version={{.Version}}
+
+nfpms:
+  - id: ismd
+    package_name: ismd
+    vendor: BrotherHugo
+    homepage: https://github.com/BrotherHugo/infra-security-monitor
+    maintainer: BrotherHugo
+    description: |
+      Infra Security Monitor daemon: security tool summaries, SQLite history,
+      reports to file, telegram, or email.
+    formats:
+      - deb
+    bindir: /usr/bin
+    contents:
+      - src: deploy/debian/ismd.service
+        dst: /lib/systemd/system/ismd.service
+        file_info:
+          mode: 0644
+      - src: configs/config.example.yaml
+        dst: /usr/share/ismd/config.example.yaml
+        file_info:
+          mode: 0644
+      - src: README.md
+        dst: /usr/share/doc/ismd/README.md
+        file_info:
+          mode: 0644
+    scripts:
+      postinstall: deploy/debian/postinst.sh
+      preremove: deploy/debian/prerm.sh
+      postremove: deploy/debian/postrm.sh
+    deb:
+      compression: gzip
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  disable: true
+
+release:
+  github:
+    owner: BrotherHugo
+    name: infra-security-monitor
+  mode: append
