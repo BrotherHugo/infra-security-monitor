@@ -110,7 +110,7 @@ make build          # → bin/ismd
 make deb            # → dist/*.deb (requires Goreleaser)
 ```
 
-Go **1.26.5**. Releases: push to `main` runs [go-semantic-release](https://github.com/go-semantic-release/semantic-release) (tag, `CHANGELOG.md`, `internal/version/version.go`), then triggers Goreleaser to attach `.deb` packages. Manual republish: Actions → **Release packages** → Run workflow → tag `v0.3.1` (etc.). Use [Conventional Commits](https://www.conventionalcommits.org/) (`fix:`, `feat:`, breaking) in merge commits.
+Go **1.26.5**. Releases: push to `main` runs [go-semantic-release](https://github.com/go-semantic-release/semantic-release) (tag, `CHANGELOG.md`, `internal/version/version.go`), commits those files back to `main` with `[skip ci]`, then triggers Goreleaser to attach `.deb` packages. Do not edit `internal/version/version.go` or `CHANGELOG.md` by hand — use [Conventional Commits](https://www.conventionalcommits.org/) (`fix:`, `feat:`, breaking) in merge commits. Manual republish: Actions → **Release packages** → Run workflow → tag `v1.0.1` (etc.).
 
 Concept and code map: [docs/CONCEPT.md](docs/CONCEPT.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). License: [MIT](LICENSE).
 

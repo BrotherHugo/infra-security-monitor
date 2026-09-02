@@ -42,6 +42,17 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: "true"
 
+      - name: Commit release files
+        if: steps.semrel.outputs.version != ''
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add internal/version/version.go CHANGELOG.md
+          if ! git diff --staged --quiet; then
+            git commit -m "chore(release): v${{ steps.semrel.outputs.version }} [skip ci]"
+            git push
+          fi
+
       - name: Trigger package release
         if: steps.semrel.outputs.version != ''
         env:
