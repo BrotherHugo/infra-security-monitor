@@ -35,7 +35,6 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           changelog-file: CHANGELOG.md
-          update-file: internal/version/version.go
           allow-initial-development-versions: false
           prepend: true
         env:
@@ -44,12 +43,15 @@ jobs:
 
       - name: Commit release files
         if: steps.semrel.outputs.version != ''
+        env:
+          VERSION: ${{ steps.semrel.outputs.version }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          sed -i "s/var Version = \".*\"/var Version = \"$VERSION\"/" internal/version/version.go
           git add internal/version/version.go CHANGELOG.md
           if ! git diff --staged --quiet; then
-            git commit -m "chore(release): v${{ steps.semrel.outputs.version }} [skip ci]"
+            git commit -m "chore(release): v$VERSION [skip ci]"
             git push
           fi
 
