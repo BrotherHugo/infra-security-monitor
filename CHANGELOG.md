@@ -1,3 +1,14 @@
+## 1.0.4 (2026-09-14)
+
+#### Bug Fixes
+
+* BH-2: Doc improvements (#2) (1acba2cf)
+
+#### Chores
+
+* **release:** v1.0.3 [skip ci] (6859185b)
+
+
 ## 1.0.3 (2026-09-03)
 
 #### Bug Fixes
