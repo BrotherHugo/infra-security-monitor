@@ -32,6 +32,7 @@ modules:
     launch_params:
       - --check
       - --skip-keypress
+      - --update
   chkrootkit:
     launch_params:
       - -q
