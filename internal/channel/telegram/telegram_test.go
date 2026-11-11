@@ -126,8 +126,8 @@ func TestChannel_Send_chunksLongBody(t *testing.T) {
 	if len([]rune(texts[0])) > 4096 {
 		t.Fatalf("first message too long: %d", len([]rune(texts[0])))
 	}
-	if !strings.Contains(texts[1], "--- ISM report (part 2/") {
-		t.Fatalf("second message missing header: %q", texts[1][:min(60, len(texts[1]))])
+	if strings.Join(texts, "") != longBody {
+		t.Fatal("chunked messages do not rejoin to original body")
 	}
 }
 

@@ -31,6 +31,7 @@ type Service struct {
 	location        *time.Location
 	keepHistoryDays int
 	moduleOrder     []string
+	renderer        *format.Renderer
 }
 
 // Sender is the minimal delivery channel port for the service.
@@ -50,6 +51,7 @@ func New(
 	location *time.Location,
 	keepHistoryDays int,
 	moduleOrder []string,
+	renderer *format.Renderer,
 ) *Service {
 	if clock == nil {
 		clock = func() time.Time { return time.Now().UTC() }
@@ -72,6 +74,7 @@ func New(
 		location:        loc,
 		keepHistoryDays: keepHistoryDays,
 		moduleOrder:     append([]string(nil), moduleOrder...),
+		renderer:        renderer,
 	}
 }
 
@@ -108,13 +111,20 @@ func (s *Service) RunCycle(ctx context.Context) error {
 	}
 
 	generatedAt := s.clock()
-	report := format.Build(format.RunMeta{
+	renderer := s.renderer
+	if renderer == nil {
+		renderer = format.DefaultRenderer()
+	}
+	report, err := renderer.Build(format.RunMeta{
 		RunID:       runID,
 		Hostname:    hostname,
 		GeneratedAt: generatedAt,
 		Location:    s.location,
 		ModuleOrder: s.moduleOrder,
 	}, moduleResults)
+	if err != nil {
+		return fmt.Errorf("format report: %w", err)
+	}
 
 	analyzerInput := analyze.Input{
 		Report:      report,

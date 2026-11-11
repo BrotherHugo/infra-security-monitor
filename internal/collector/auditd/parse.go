@@ -16,7 +16,8 @@ const (
 	maxTopEntries  = 8
 	maxSampleLines = 5
 
-	netfilterNote = "note: NETFILTER_CFG bursts are often fail2ban/iptables reloads"
+	// NetfilterNote explains bursts that are usually fail2ban or iptables reloads.
+	NetfilterNote = "note: NETFILTER_CFG bursts are often fail2ban/iptables reloads"
 )
 
 var (
@@ -37,9 +38,9 @@ var summaryLineMarkers = []string{
 
 // Summary holds key lines from aureport --summary.
 type Summary struct {
-	KeyLines       []string `json:"key_lines"`
-	FailedLogins   int      `json:"failed_logins"`
-	AnomalyEvents  int      `json:"anomaly_events"`
+	KeyLines      []string `json:"key_lines"`
+	FailedLogins  int      `json:"failed_logins"`
+	AnomalyEvents int      `json:"anomaly_events"`
 }
 
 // EventAggregate aggregates aureport event lines.
@@ -144,6 +145,14 @@ func ParseFileReport(stdout string) FileReport {
 		HasEvents:      true,
 		EventAggregate: agg,
 	}
+}
+
+// Snapshot is parsed auditd analytics for report templates.
+type Snapshot struct {
+	Summary Summary
+	Config  ConfigChangeReport
+	Anomaly AnomalyReport
+	File    FileReport
 }
 
 // FormatSectionText builds compressed section text for the operator.
@@ -267,7 +276,7 @@ func formatConfigSection(config ConfigChangeReport) []string {
 		lines = append(lines, fmt.Sprintf("  window: %s .. %s", config.FirstTime, config.LastTime))
 	}
 	if hasKey(config.ByType, "NETFILTER_CFG") {
-		lines = append(lines, "  "+netfilterNote)
+		lines = append(lines, "  "+NetfilterNote)
 	}
 	lines = append(lines, formatInterestingSample("  sample", config.InterestingSample, config.Sample)...)
 	return lines

@@ -13,10 +13,9 @@ import (
 )
 
 const (
-	channelName         = "telegram"
-	telegramMaxLen      = 4096
-	telegramAPIBase     = "https://api.telegram.org"
-	maxHeaderTemplate   = "--- ISM report (part 999/999) ---\n"
+	channelName     = "telegram"
+	telegramMaxLen  = 4096
+	telegramAPIBase = "https://api.telegram.org"
 )
 
 // HTTPDoer performs HTTP requests (for test doubles).
@@ -147,40 +146,13 @@ func splitMessages(body string) []string {
 		return []string{body}
 	}
 
-	maxHeaderRunes := len([]rune(maxHeaderTemplate))
-	contMax := telegramMaxLen - maxHeaderRunes
-	if contMax < 1 {
-		contMax = 1
-	}
-
-	rest := len(runes) - telegramMaxLen
-	total := 1 + (rest+contMax-1)/contMax
-
-	for {
-		messages := make([]string, 0, total)
-		offset := 0
-
-		end := minInt(telegramMaxLen, len(runes))
+	messages := make([]string, 0, (len(runes)+telegramMaxLen-1)/telegramMaxLen)
+	for offset := 0; offset < len(runes); {
+		end := minInt(offset+telegramMaxLen, len(runes))
 		messages = append(messages, string(runes[offset:end]))
 		offset = end
-
-		for part := 2; part <= total && offset < len(runes); part++ {
-			header := fmt.Sprintf("--- ISM report (part %d/%d) ---\n", part, total)
-			headerRunes := len([]rune(header))
-			chunkMax := telegramMaxLen - headerRunes
-			if chunkMax < 1 {
-				chunkMax = 1
-			}
-			end = minInt(offset+chunkMax, len(runes))
-			messages = append(messages, header+string(runes[offset:end]))
-			offset = end
-		}
-
-		if offset >= len(runes) {
-			return messages
-		}
-		total++
 	}
+	return messages
 }
 
 func minInt(a, b int) int {

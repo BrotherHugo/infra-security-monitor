@@ -5,6 +5,9 @@ case "$1" in
 configure)
 	install -d -m 0750 /etc/ism
 	install -d -m 0750 /var/lib/ism/reports
+	if [ ! -f /etc/ism/report.tmpl ]; then
+		install -m 0640 /usr/share/ismd/report.default.tmpl /etc/ism/report.tmpl
+	fi
 	if [ ! -f /etc/ism/config.yaml ]; then
 		install -m 0640 /usr/share/ismd/config.example.yaml /etc/ism/config.yaml
 		chmod 0600 /etc/ism/config.yaml

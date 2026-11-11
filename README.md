@@ -62,6 +62,8 @@ analyzers:
 
 Omit `modules.enabled` to run all six modules. Add `telegram` / `email` under `reporting.channels`, or `analyzers.google_ai` for a Gemini appendix — full example: [`configs/config.example.yaml`](configs/config.example.yaml). API key: [Google AI Studio](https://aistudio.google.com/).
 
+Optional `reporting.template` points at a Go `text/template` file (relative paths start at the config file's directory). The example config uses `report.tmpl` beside `config.yaml`. On first package install, `postinst` copies the default template to `/etc/ism/report.tmpl`. Omit `template` to use the built-in text embedded in the binary. Reference copy: `/usr/share/ismd/report.default.tmpl`.
+
 ## First run
 
 One report cycle, then exit (uses package default paths):
@@ -88,6 +90,7 @@ After config changes: `sudo systemctl restart ismd.service`.
 | Config | `/etc/ism/config.yaml` |
 | SQLite | `/var/lib/ism/ism.db` |
 | File reports | `reporting.channels.file.save_to_dir` (example: `/var/lib/ism/reports`) |
+| Report template | `/etc/ism/report.tmpl` after install (`reporting.template`; omit for built-in). Reference: `/usr/share/ismd/report.default.tmpl` |
 | Binary | `/usr/bin/ismd` |
 
 `--config` and `--db` override those paths (`ismd --help`). `ismd --version` prints the release version.
@@ -107,7 +110,10 @@ For local testing. Production install is the `.deb` above.
 
 ```bash
 go test ./...
-make build          # → bin/ismd
+make build                              # → bin/ismd (host arch)
+make build-linux                        # → bin/ismd-linux-amd64 (Linux x86_64)
+# same: make build GOOS=linux GOARCH=amd64
+make try                                # one cycle into bin/try/ (example config, no root)
 make deb            # → dist/*.deb (requires Goreleaser)
 ```
 

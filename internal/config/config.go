@@ -13,12 +13,12 @@ type Config struct {
 // Modules lists enabled collectors and their per-module settings.
 // Empty Enabled after Load means all modules (see applyDefaults).
 type Modules struct {
-	Enabled            []string                    `yaml:"enabled"`
-	Fail2ban           Fail2banSettings            `yaml:"fail2ban"`
-	Rkhunter           RkhunterSettings            `yaml:"rkhunter"`
-	Chkrootkit         ChkrootkitSettings          `yaml:"chkrootkit"`
-	Lynis              LynisSettings               `yaml:"lynis"`
-	UnattendedUpgrades UnattendedUpgradesSettings  `yaml:"unattended_upgrades"`
+	Enabled            []string                   `yaml:"enabled"`
+	Fail2ban           Fail2banSettings           `yaml:"fail2ban"`
+	Rkhunter           RkhunterSettings           `yaml:"rkhunter"`
+	Chkrootkit         ChkrootkitSettings         `yaml:"chkrootkit"`
+	Lynis              LynisSettings              `yaml:"lynis"`
+	UnattendedUpgrades UnattendedUpgradesSettings `yaml:"unattended_upgrades"`
 }
 
 // Analyzers holds optional analyzer sections; nil means disabled.
@@ -29,9 +29,10 @@ type Analyzers struct {
 	GoogleAI       *GoogleAISettings `yaml:"google_ai,omitempty"`
 }
 
-// Reporting is the report schedule and delivery channels.
+// Reporting is the report schedule, template, and delivery channels.
 type Reporting struct {
 	Time     []string `yaml:"time"`
+	Template string   `yaml:"template,omitempty"`
 	Channels Channels `yaml:"channels"`
 }
 

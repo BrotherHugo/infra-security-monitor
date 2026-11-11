@@ -11,13 +11,19 @@ func ParseStatus(stdout, expectedJail string) (JailStatus, error) {
 	return parseStatus(stdout, expectedJail)
 }
 
+// JailStatus is one jail's parsed fail2ban-client status.
 type JailStatus struct {
-	Name             string   `json:"name"`
-	CurrentlyFailed  int      `json:"currently_failed"`
-	TotalFailed      int      `json:"total_failed"`
-	CurrentlyBanned  int      `json:"currently_banned"`
-	TotalBanned      int      `json:"total_banned"`
-	BannedIPs        []string `json:"banned_ips"`
+	Name            string   `json:"name"`
+	CurrentlyFailed int      `json:"currently_failed"`
+	TotalFailed     int      `json:"total_failed"`
+	CurrentlyBanned int      `json:"currently_banned"`
+	TotalBanned     int      `json:"total_banned"`
+	BannedIPs       []string `json:"banned_ips"`
+}
+
+// Snapshot is parsed fail2ban analytics for report templates.
+type Snapshot struct {
+	Jails []JailStatus
 }
 
 func parseStatus(stdout, expectedJail string) (JailStatus, error) {

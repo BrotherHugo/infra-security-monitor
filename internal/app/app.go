@@ -10,6 +10,7 @@ import (
 
 	"github.com/BrotherHugo/infra-security-monitor/internal/config"
 	"github.com/BrotherHugo/infra-security-monitor/internal/execcmd"
+	"github.com/BrotherHugo/infra-security-monitor/internal/format"
 	"github.com/BrotherHugo/infra-security-monitor/internal/scheduler"
 	"github.com/BrotherHugo/infra-security-monitor/internal/service/report"
 	"github.com/BrotherHugo/infra-security-monitor/internal/store/sqlite"
@@ -74,6 +75,11 @@ func Run(ctx context.Context, opts Options) error {
 		return fmt.Errorf("analyzers: %w", err)
 	}
 
+	renderer, err := format.Load(cfg.Reporting.Template, filepath.Dir(opts.ConfigPath))
+	if err != nil {
+		return fmt.Errorf("report template: %w", err)
+	}
+
 	clock := opts.Clock
 	if clock == nil {
 		clock = func() time.Time { return time.Now().UTC() }
@@ -89,6 +95,7 @@ func Run(ctx context.Context, opts Options) error {
 		loc,
 		cfg.KeepHistoryDays,
 		cfg.Modules.Enabled,
+		renderer,
 	)
 
 	slog.InfoContext(ctx, "ismd: starting",
