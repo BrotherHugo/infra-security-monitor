@@ -1,0 +1,87 @@
+{{- /*
+Built-in report. A nil module did not run and its section is skipped.
+
+Root: .ID .Host .Time .ModuleNames
+      .Fail2ban .Auditd .Rkhunter .Chkrootkit .Lynis .Unattended
+Func: join
+Lists below are already capped. Full tool output stays in raw_json.
+  Fail2ban.Jails: .Name .CurrentlyFailed .TotalFailed .CurrentlyBanned .TotalBanned .BannedIPs
+  Auditd: .Summary .FailedLogins .AnomalyEvents
+          .Config .Anomaly .File — .Title .Total .TypeLine .AUIDLine .PathLine .Window .Note .Sample
+  Rkhunter: .Summary .SuspectFiles .Warnings .WarningTotal .WarningsTruncated .Note
+  Chkrootkit: .FindingTotal .FindingsTruncated .Findings[].Line .Reason
+  Lynis: .HardeningIndex .WarningTotal .Warnings .WarningsTruncated
+  Unattended: .LastSuccess .Stale .StaleDays .Warnings .KeptBack .Tail .TailTotal .TailTruncated
+  Every module: .Error (empty unless collect failed)
+Analyzer text is appended after this template.
+*/ -}}
+Security Audit
+id: {{.ID}}
+host: {{.Host}}
+time: {{.Time.Format "2006-01-02 15:04:05"}}
+modules: {{join .ModuleNames ", "}}
+{{- with .Fail2ban}}
+
+=== fail2ban ===
+{{if .Error}}ERROR: {{.Error}}
+{{else}}{{range .Jails}}jail {{.Name}}: failed={{.CurrentlyFailed}}/{{.TotalFailed}} banned={{.CurrentlyBanned}}/{{.TotalBanned}} ips={{if .BannedIPs}}{{join .BannedIPs " "}}{{else}}-{{end}}
+{{end}}{{end}}{{end}}{{- with .Auditd}}
+
+=== auditd ===
+{{if .Error}}ERROR: {{.Error}}
+{{else}}Summary Report:
+{{range .Summary}}  {{.}}
+{{end}}{{template "events" .Config}}{{template "events" .Anomaly}}{{template "events" .File}}{{end}}{{end}}{{- with .Rkhunter}}
+
+=== rkhunter ===
+{{if .Error}}ERROR: {{.Error}}
+{{else}}{{if .Summary}}system checks summary:
+{{range .Summary}}  {{.}}
+{{end}}{{end}}{{if .SuspectFiles}}suspect files: {{.SuspectFiles}}
+{{end}}{{if .Warnings}}warnings ({{.WarningTotal}}):
+{{range .Warnings}}  {{.}}
+{{end}}{{if .WarningsTruncated}}  ... truncated
+{{end}}{{if .Note}}{{.Note}}
+{{end}}{{else if not .Summary}}status: ok
+{{end}}{{end}}{{end}}{{- with .Chkrootkit}}
+
+=== chkrootkit ===
+{{if .Error}}ERROR: {{.Error}}
+{{else}}{{if .Findings}}findings ({{.FindingTotal}}):
+{{range .Findings}}  {{.Line}}{{if .Reason}} [{{.Reason}}]{{end}}
+{{end}}{{if .FindingsTruncated}}  ... truncated
+{{end}}{{else}}findings: 0
+{{end}}{{end}}{{end}}{{- with .Lynis}}
+
+=== lynis ===
+{{if .Error}}ERROR: {{.Error}}
+{{else}}{{if .HardeningIndex}}hardening index: {{.HardeningIndex}}
+{{end}}warnings ({{.WarningTotal}}):
+{{range .Warnings}}  {{.}}
+{{else}}  none
+{{end}}{{if .WarningsTruncated}}  ... truncated
+{{end}}{{end}}{{end}}{{- with .Unattended}}
+
+=== unattended-upgrades ===
+{{if .Error}}ERROR: {{.Error}}
+{{else}}last success: {{.LastSuccess}}
+stale: {{if .Stale}}yes (> {{.StaleDays}} days){{else}}no{{end}}
+{{if .Warnings}}warnings ({{len .Warnings}}):
+{{range .Warnings}}  {{.}}
+{{end}}{{end}}{{if .KeptBack}}kept back ({{len .KeptBack}}):
+{{range .KeptBack}}  {{.}}
+{{end}}{{end}}{{if or .Stale .Warnings .KeptBack}}{{if .Tail}}tail:
+{{range .Tail}}  {{.}}
+{{end}}{{if .TailTruncated}}  ... last {{len .Tail}} of {{.TailTotal}}
+{{end}}{{end}}{{end}}{{end}}{{end}}
+{{- define "events" -}}
+{{if .Total}}{{.Title}} ({{.Total}}):
+{{if .TypeLine}}  by type: {{.TypeLine}}
+{{end}}{{if .AUIDLine}}  by auid: {{.AUIDLine}}
+{{end}}{{if .PathLine}}  by path: {{.PathLine}}
+{{end}}{{if .Window}}  window: {{.Window}}
+{{end}}{{if .Note}}  {{.Note}}
+{{end}}{{if .Sample}}  sample:
+{{range .Sample}}    {{.}}
+{{end}}{{end}}{{end}}{{if not .Total}}{{.Title}}: none
+{{end}}{{end -}}

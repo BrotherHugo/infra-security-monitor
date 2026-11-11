@@ -1,7 +1,6 @@
 package format
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
@@ -17,57 +16,25 @@ type RunMeta struct {
 	ModuleOrder []string
 }
 
-// Build assembles a single text report from module results.
-func Build(meta RunMeta, results []domain.ModuleResult) domain.TextReport {
-	loc := meta.Location
-	if loc == nil {
-		loc = time.Local
-	}
+// Build renders the built-in template.
+func Build(meta RunMeta, results []domain.ModuleResult) (domain.TextReport, error) {
+	return DefaultRenderer().Build(meta, results)
+}
 
-	byName := make(map[string]domain.ModuleResult, len(results))
-	for _, result := range results {
-		byName[string(result.Name)] = result
+// Build renders the template for one cycle.
+func (r *Renderer) Build(meta RunMeta, results []domain.ModuleResult) (domain.TextReport, error) {
+	if r == nil {
+		r = defaultRenderer
 	}
 
 	var body strings.Builder
-	fmt.Fprintf(&body, "ISM report\n")
-	fmt.Fprintf(&body, "id: %d\n", meta.RunID)
-	fmt.Fprintf(&body, "host: %s\n", meta.Hostname)
-	fmt.Fprintf(&body, "time: %s\n", meta.GeneratedAt.In(loc).Format("2006-01-02 15:04:05"))
-	fmt.Fprintf(&body, "modules: %s\n", strings.Join(meta.ModuleOrder, ", "))
-
-	for _, name := range meta.ModuleOrder {
-		result, ok := byName[name]
-		fmt.Fprintf(&body, "\n=== %s ===\n", name)
-		if !ok {
-			fmt.Fprintf(&body, "status: ok\n")
-			continue
-		}
-		writeModuleSection(&body, result)
+	if err := r.tmpl.Execute(&body, newView(meta, results)); err != nil {
+		return domain.TextReport{}, err
 	}
 
 	return domain.TextReport{
 		GeneratedAt: meta.GeneratedAt,
 		Hostname:    meta.Hostname,
 		Body:        body.String(),
-	}
-}
-
-func writeModuleSection(body *strings.Builder, result domain.ModuleResult) {
-	switch {
-	case result.Status == domain.ModuleStatusError:
-		if strings.TrimSpace(result.SectionText) != "" {
-			fmt.Fprintf(body, "%s\n", strings.TrimSpace(result.SectionText))
-			return
-		}
-		if strings.TrimSpace(result.Error) != "" {
-			fmt.Fprintf(body, "ERROR: %s\n", strings.TrimSpace(result.Error))
-			return
-		}
-		fmt.Fprintf(body, "ERROR: unknown error\n")
-	case strings.TrimSpace(result.SectionText) == "":
-		fmt.Fprintf(body, "status: ok\n")
-	default:
-		fmt.Fprintf(body, "%s\n", strings.TrimSpace(result.SectionText))
-	}
+	}, nil
 }

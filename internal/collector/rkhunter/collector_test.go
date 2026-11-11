@@ -121,6 +121,10 @@ func TestCollector_Collect_fromExec_warnings(t *testing.T) {
 	if result.Status != domain.ModuleStatusAttention {
 		t.Fatalf("Status = %q, want attention", result.Status)
 	}
+	parsed, ok := result.Data.(rkhunter.ParseResult)
+	if !ok || parsed.WarningCount != 1 {
+		t.Fatalf("Data = %#v", result.Data)
+	}
 	if !strings.Contains(result.SectionText, "warnings (1):") {
 		t.Fatalf("SectionText = %q", result.SectionText)
 	}

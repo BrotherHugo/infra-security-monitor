@@ -83,6 +83,10 @@ func TestCollector_Collect_stdout(t *testing.T) {
 	if result.Status != domain.ModuleStatusAttention {
 		t.Fatalf("Status = %q, want attention", result.Status)
 	}
+	parsed, ok := result.Data.(lynis.ParseResult)
+	if !ok || (parsed.HardeningIndex == 0 && parsed.WarningCount == 0 && len(parsed.Warnings) == 0) {
+		t.Fatalf("Data = %#v", result.Data)
+	}
 	assertRawKeys(t, result.Raw, "stdout")
 }
 

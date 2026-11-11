@@ -49,6 +49,7 @@ func (c *Collector) Collect(ctx context.Context) (domain.ModuleResult, error) {
 
 	blobs := make(map[string]string, len(c.jails))
 	var sections []string
+	jails := make([]JailStatus, 0, len(c.jails))
 	moduleStatus := domain.ModuleStatusOK
 
 	for _, jail := range c.jails {
@@ -64,6 +65,7 @@ func (c *Collector) Collect(ctx context.Context) (domain.ModuleResult, error) {
 			return domain.ModuleResult{}, fmt.Errorf("fail2ban: jail %q: %w", jail, err)
 		}
 		sections = append(sections, formatJailSection(stat))
+		jails = append(jails, stat)
 
 		if stat.CurrentlyBanned > 0 || len(stat.BannedIPs) > 0 {
 			moduleStatus = domain.ModuleStatusAttention
@@ -81,6 +83,7 @@ func (c *Collector) Collect(ctx context.Context) (domain.ModuleResult, error) {
 		CollectedAt: c.now().UTC(),
 		Raw:         raw,
 		SectionText: strings.Join(sections, "\n"),
+		Data:        Snapshot{Jails: jails},
 	}, nil
 }
 

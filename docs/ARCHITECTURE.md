@@ -18,7 +18,7 @@ The input state is a YAML config file plus the host environment (installed tools
      SQLite (raw_json + section_text)
             |
             v
-     formatter -> TextReport
+     formatter (text/template) -> TextReport
             |
             v
      analyzers (optional appendix)
@@ -131,13 +131,15 @@ Each package: run command or read log → store raw output in `raw_json` → par
 
 ### `internal/format`
 
-Assembles the unified plain-text report from module sections and metadata (hostname, timestamp).
+Renders the plain-text report with `text/template`. `reporting.template` is a file path (relative paths start at the config file's directory). Empty uses the built-in `default.tmpl`.
+
+The template object has run metadata and a named field per module. Those fields are built at render time from the in-memory parse: lists capped, auditd maps turned into sorted top counts, rkhunter false-positive text in `.Note`. A module that did not run is nil. The YAML config is not passed in. Analyzer text is appended after render.
 
 ### `internal/store/sqlite`
 
 Repository: `BeginRun`, `SaveModuleResult`, `FinishRun`, `Prune`, migrations. Default path `/var/lib/ism/ism.db` (overridable via `--db`).
 
-**Architecture Invariant:** `raw_json` is the source of truth — a JSON object with named string blobs (raw tool output; keys vary by module). `section_text` is a projection for channels and operators. There is no separate `summary_json` cache.
+**Architecture Invariant:** `raw_json` is the source of truth — a JSON object with named string blobs (raw tool output; keys vary by module). `section_text` is the collector projection written at collect time. Channels receive the template render of that cycle's in-memory results, not a reread of SQLite. The built-in template prints the named view, so channel text and `section_text` can differ. There is no separate `summary_json` cache. The template view is not stored.
 
 Tables: `collection_runs` (`status`: `ok` | `degraded` | `failed`), `module_results` (`run_id`, `module`, `collected_at`, `status`, `raw_json`, `section_text`, `error`).
 
@@ -167,7 +169,7 @@ One slot, in order:
 2. `BeginRun` opens the run record.
 3. For each name in `modules.enabled` (config order; empty = all modules): `Collect` → persist result or error row.
 4. `Prune` rows older than `keep_history_days`.
-5. Formatter builds `TextReport`.
+5. Template renders `TextReport` (built-in or `reporting.template`).
 6. Each configured analyzer appends to `Body`.
 7. Each configured channel `Send`s the same final text.
 8. `FinishRun` with aggregated status.
@@ -190,4 +192,4 @@ Secrets (telegram token, SMTP password, API keys) are in YAML v1. Collectors onl
 
 ---
 
-_Last updated: 2026-09-01_
+_Last updated: 2026-11-10_

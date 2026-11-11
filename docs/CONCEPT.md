@@ -18,7 +18,9 @@ Typical deployment: Ubuntu with fail2ban, unattended-upgrades, auditd, rkhunter,
 
 **Analyzer.** Optional modules that append a section to the end of the report body after assembly and before channel delivery. Enabled via an `analyzers` config section (same pattern as `reporting.channels`). The first implementation is `google-ai`: when `analyzers.google_ai` is set, it sends full raw module snapshots from the current cycle (`raw_json`, named blobs) to Gemini — not compressed `section_text`. The model response becomes appendix `=== AI analysis (google-ai) ===`. Shared prompt settings live under `analyzers` (`prompt`, `custom_rules`, `timeout_seconds`); credentials and model under `analyzers.google_ai`. `timeout_seconds` limits a single HTTP call per analyzer, not the entire AI phase. Analyzer errors do not block delivery: the appendix gets `ERROR: …`, and the run status may become `degraded`.
 
-**Report cycle.** At each moment from `reporting.time` (timezone = `timezone` or host local): for each enabled module, collect (capture raw → parse → persist) → prune by `keep_history_days` → assemble unified text from sections → optionally append analyzer appendix (AI on raw data) → send to all configured channels. Reports always go out, even when findings are few — the operator needs the quiet picture too.
+**Report template.** Optional `reporting.template`: path to a Go `text/template` file. Relative paths resolve from the config file's directory. Empty or omitted uses the built-in template (`internal/format/default.tmpl`, packaged as `/usr/share/ismd/report.default.tmpl`). Package `postinst` copies that file to `/etc/ism/report.tmpl` when missing; the example config points at `report.tmpl` beside `config.yaml`. The template receives run metadata and one named value per module (`.Fail2ban`, `.Auditd`, `.Rkhunter`, `.Chkrootkit`, `.Lynis`, `.Unattended`). A module that did not run is nil and its section is skipped. Lists in those values are already capped and auditd counts are already sorted; the full tool output stays in `raw_json`. `.Error` is set when collect failed. The template does not receive the YAML config. A syntax error or unreadable file fails startup. Field names are in the comment at the top of `default.tmpl`.
+
+**Report cycle.** At each moment from `reporting.time` (timezone = `timezone` or host local): for each enabled module, collect (capture raw → parse → persist) → prune by `keep_history_days` → render the template → optionally append analyzer appendix (AI on raw data) → send to all configured channels. Reports always go out, even when findings are few — the operator needs the quiet picture too. The analyzer appendix is appended after the template output.
 
 ## Configuration
 
@@ -28,6 +30,7 @@ Default path: `/etc/ism/config.yaml`. On start the daemon validates config (manu
 reporting:
   time:
     - "12:30"
+  template: report.tmpl  # beside config.yaml (/etc/ism/report.tmpl after package install)
   channels:
     file:
       save_to_dir: /var/lib/ism/reports
@@ -125,4 +128,4 @@ CLI (`ism now`, `ism report …`) is outside MVP code; use `ismd --once` for man
 
 ---
 
-_Last updated: 2026-09-01_
+_Last updated: 2026-11-10_

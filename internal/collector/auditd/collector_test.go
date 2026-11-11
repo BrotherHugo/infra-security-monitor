@@ -210,6 +210,10 @@ func TestCollector_Collect_ok(t *testing.T) {
 	if result.Status != domain.ModuleStatusOK {
 		t.Fatalf("Status = %q, want ok", result.Status)
 	}
+	snap, ok := result.Data.(auditd.Snapshot)
+	if !ok || len(snap.Summary.KeyLines) == 0 {
+		t.Fatalf("Data = %#v", result.Data)
+	}
 	if !strings.Contains(result.SectionText, "Number of integrity events:") {
 		t.Fatalf("SectionText = %q", result.SectionText)
 	}

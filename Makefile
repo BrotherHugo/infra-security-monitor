@@ -44,6 +44,9 @@ install: build ## Install on host (sudo): binary, unit, dirs, config if missing
 	install -m 0755 $(OUT) $(DESTDIR)$(BINDIR)/$(BINARY)
 	install -d $(DESTDIR)/etc/ism
 	install -d $(DESTDIR)/var/lib/ism/reports
+	@if [ ! -f $(DESTDIR)/etc/ism/report.tmpl ]; then \
+		install -m 0644 internal/format/default.tmpl $(DESTDIR)/etc/ism/report.tmpl; \
+	fi
 	@if [ ! -f $(DESTDIR)/etc/ism/config.yaml ]; then \
 		install -m 0644 configs/config.example.yaml $(DESTDIR)/etc/ism/config.yaml; \
 		chmod 0600 $(DESTDIR)/etc/ism/config.yaml; \

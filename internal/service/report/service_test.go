@@ -10,6 +10,7 @@ import (
 	"github.com/BrotherHugo/infra-security-monitor/internal/analyze"
 	"github.com/BrotherHugo/infra-security-monitor/internal/collector"
 	"github.com/BrotherHugo/infra-security-monitor/internal/domain"
+	"github.com/BrotherHugo/infra-security-monitor/internal/format"
 	"github.com/BrotherHugo/infra-security-monitor/internal/service/report"
 )
 
@@ -38,6 +39,7 @@ func TestService_RunCycle_success(t *testing.T) {
 		time.UTC,
 		30,
 		[]string{"fail2ban"},
+		nil,
 	)
 
 	if err := svc.RunCycle(ctx); err != nil {
@@ -77,6 +79,7 @@ func TestService_RunCycle_collectErrorDegraded(t *testing.T) {
 		time.UTC,
 		30,
 		[]string{"fail2ban"},
+		nil,
 	)
 
 	if err := svc.RunCycle(ctx); err != nil {
@@ -118,6 +121,7 @@ func TestService_RunCycle_sendErrorDegraded(t *testing.T) {
 		time.UTC,
 		30,
 		[]string{"fail2ban"},
+		nil,
 	)
 
 	if err := svc.RunCycle(ctx); err != nil {
@@ -154,6 +158,7 @@ func TestService_RunCycle_analyzerAppendix(t *testing.T) {
 		time.UTC,
 		30,
 		[]string{"fail2ban"},
+		nil,
 	)
 
 	if err := svc.RunCycle(ctx); err != nil {
@@ -197,6 +202,7 @@ func TestService_RunCycle_analyzerErrorDegraded(t *testing.T) {
 		time.UTC,
 		30,
 		[]string{"fail2ban"},
+		nil,
 	)
 
 	if err := svc.RunCycle(ctx); err != nil {
@@ -208,6 +214,45 @@ func TestService_RunCycle_analyzerErrorDegraded(t *testing.T) {
 	body := channel.sent[0].Body
 	if !strings.Contains(body, "=== AI analysis (google-ai) ===\nERROR: api down") {
 		t.Fatalf("report body = %q", body)
+	}
+}
+
+func TestService_RunCycle_customTemplateListsEveryModule(t *testing.T) {
+	ctx := context.Background()
+	now := time.Date(2026, 8, 13, 12, 0, 0, 0, time.UTC)
+	renderer, err := format.Parse("host {{.Host}}\n")
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+
+	store := &fakeStore{}
+	coll := &fakeCollector{
+		name: "fail2ban",
+		result: domain.ModuleResult{
+			Name:   "fail2ban",
+			Status: domain.ModuleStatusAttention,
+		},
+	}
+	channel := &fakeChannel{name: "file"}
+
+	svc := report.New(
+		store,
+		[]collector.Collector{coll},
+		[]report.Sender{channel},
+		nil,
+		func() (string, error) { return "host-a", nil },
+		func() time.Time { return now },
+		time.UTC,
+		30,
+		[]string{"fail2ban", "auditd"},
+		renderer,
+	)
+
+	if err := svc.RunCycle(ctx); err != nil {
+		t.Fatalf("RunCycle() error = %v", err)
+	}
+	if channel.sent[0].Body != "host host-a\n" {
+		t.Fatalf("body = %q", channel.sent[0].Body)
 	}
 }
 
@@ -226,6 +271,7 @@ func TestService_RunCycle_abortMarksFailed(t *testing.T) {
 		time.UTC,
 		30,
 		[]string{"fail2ban"},
+		nil,
 	)
 
 	if err := svc.RunCycle(context.Background()); err == nil {

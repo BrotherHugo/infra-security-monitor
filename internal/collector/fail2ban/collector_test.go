@@ -63,6 +63,10 @@ func TestCollector_Collect(t *testing.T) {
 	if !strings.Contains(result.SectionText, "jail nginx-limit-req: failed=6/21946 banned=1/119 ips=204.76.203.18") {
 		t.Fatalf("SectionText missing nginx line: %q", result.SectionText)
 	}
+	snap, ok := result.Data.(fail2ban.Snapshot)
+	if !ok || len(snap.Jails) != 2 || snap.Jails[1].CurrentlyBanned != 1 {
+		t.Fatalf("Data = %#v", result.Data)
+	}
 
 	var blobs map[string]string
 	if err := json.Unmarshal(result.Raw, &blobs); err != nil {

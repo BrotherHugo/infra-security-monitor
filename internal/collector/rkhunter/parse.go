@@ -10,7 +10,8 @@ const (
 	markerCheckStarted = "=== rkhunter check started"
 	warningPrefix      = "Warning:"
 	maxWarningLines    = 50
-	fpNote             = "note: file property warnings after package updates may be false positives; run rkhunter --propupd if needed"
+	// FalsePositiveNote is the operator hint for file-property warnings.
+	FalsePositiveNote = "note: file property warnings after package updates may be false positives; run rkhunter --propupd if needed"
 )
 
 var (
@@ -171,7 +172,7 @@ func FormatSectionText(parsed ParseResult) string {
 		if warningItems > maxWarningLines {
 			parts = append(parts, fmt.Sprintf("  ... truncated, showing %d of %d", maxWarningLines, warningItems))
 		}
-		parts = append(parts, fpNote)
+		parts = append(parts, FalsePositiveNote)
 	} else {
 		parts = append(parts, "warnings: 0")
 	}

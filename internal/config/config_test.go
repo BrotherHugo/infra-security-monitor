@@ -9,6 +9,33 @@ import (
 	"github.com/BrotherHugo/infra-security-monitor/internal/config"
 )
 
+func TestLoad_templatePath(t *testing.T) {
+	path := writeTempConfig(t, `
+reporting:
+  time:
+    - "08:00"
+  template: report.tmpl
+  channels:
+    file:
+      save_to_dir: /tmp/ism-reports
+keep_history_days: 7
+modules:
+  enabled:
+    - auditd
+`)
+
+	cfg, err := config.Load(path)
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if cfg.Reporting.Template != "report.tmpl" {
+		t.Fatalf("template = %q", cfg.Reporting.Template)
+	}
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("Validate() error = %v", err)
+	}
+}
+
 func TestLoad_exampleConfig(t *testing.T) {
 	cfg, err := config.Load(filepath.Join("..", "..", "configs", "config.example.yaml"))
 	if err != nil {

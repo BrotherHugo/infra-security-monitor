@@ -12,9 +12,9 @@ type ModuleName string
 type ModuleStatus string
 
 const (
-	ModuleStatusOK         ModuleStatus = "ok"
-	ModuleStatusAttention  ModuleStatus = "attention"
-	ModuleStatusError      ModuleStatus = "error"
+	ModuleStatusOK        ModuleStatus = "ok"
+	ModuleStatusAttention ModuleStatus = "attention"
+	ModuleStatusError     ModuleStatus = "error"
 )
 
 // RunStatus is the outcome of a report cycle.
@@ -34,6 +34,7 @@ type ModuleResult struct {
 	Raw         json.RawMessage // JSON object: named string blobs (raw module snapshot)
 	SectionText string
 	Error       string
+	Data        any // parsed analytics for the report template; not stored
 }
 
 // CollectionRun is one collect+report+send cycle attempt.

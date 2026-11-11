@@ -78,5 +78,6 @@ func (c *Collector) Collect(ctx context.Context) (domain.ModuleResult, error) {
 		CollectedAt: now.UTC(),
 		Raw:         raw,
 		SectionText: FormatSectionText(parsed),
+		Data:        parsed,
 	}, nil
 }

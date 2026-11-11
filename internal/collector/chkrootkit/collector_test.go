@@ -69,6 +69,9 @@ func TestCollector_Collect_fromExec_ok(t *testing.T) {
 	if result.Status != domain.ModuleStatusOK {
 		t.Fatalf("Status = %q, want ok", result.Status)
 	}
+	if _, ok := result.Data.(chkrootkit.ParseResult); !ok {
+		t.Fatalf("Data type = %T", result.Data)
+	}
 	assertRawKeys(t, result.Raw, "last_run")
 }
 

@@ -91,6 +91,12 @@ func (c *Collector) Collect(ctx context.Context) (domain.ModuleResult, error) {
 		CollectedAt: c.now().UTC(),
 		Raw:         raw,
 		SectionText: FormatSectionText(summary, configReport, anomalyReport, fileReport),
+		Data: Snapshot{
+			Summary: summary,
+			Config:  configReport,
+			Anomaly: anomalyReport,
+			File:    fileReport,
+		},
 	}, nil
 }
 
