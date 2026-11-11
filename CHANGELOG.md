@@ -1,3 +1,14 @@
+## 1.1.0 (2026-11-11)
+
+#### Feature
+
+* BH-10: Report template support (#3) (1798391c)
+
+#### Chores
+
+* **release:** v1.0.4 [skip ci] (039481e1)
+
+
 ## 1.0.4 (2026-09-14)
 
 #### Bug Fixes
