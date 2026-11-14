@@ -3,6 +3,7 @@ Built-in report. A nil module did not run and its section is skipped.
 
 Root: .ID .Host .Time .ModuleNames
       .Fail2ban .Auditd .Rkhunter .Chkrootkit .Lynis .Unattended
+      .Analyses[].Name .Text .Error
 Func: join
 Lists below are already capped. Full tool output stays in raw_json.
   Fail2ban.Jails: .Name .CurrentlyFailed .TotalFailed .CurrentlyBanned .TotalBanned .BannedIPs
@@ -13,7 +14,8 @@ Lists below are already capped. Full tool output stays in raw_json.
   Lynis: .HardeningIndex .WarningTotal .Warnings .WarningsTruncated
   Unattended: .LastSuccess .Stale .StaleDays .Warnings .KeptBack .Tail .TailTotal .TailTruncated
   Every module: .Error (empty unless collect failed)
-Analyzer text is appended after this template.
+  Analyses: one entry per enabled analyzer. .Text is the model reply. .Error is the call failure.
+    The heading below is this template's choice.
 */ -}}
 Security Audit
 id: {{.ID}}
@@ -74,6 +76,12 @@ stale: {{if .Stale}}yes (> {{.StaleDays}} days){{else}}no{{end}}
 {{range .Tail}}  {{.}}
 {{end}}{{if .TailTruncated}}  ... last {{len .Tail}} of {{.TailTotal}}
 {{end}}{{end}}{{end}}{{end}}{{end}}
+{{- range .Analyses}}
+
+=== AI analysis ({{.Name}}) ===
+{{if .Error}}ERROR: {{.Error}}
+{{else}}{{.Text}}
+{{end}}{{end}}
 {{- define "events" -}}
 {{if .Total}}{{.Title}} ({{.Total}}):
 {{if .TypeLine}}  by type: {{.TypeLine}}

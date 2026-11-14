@@ -217,6 +217,27 @@ func TestBuild_capsAndSortsBeforeTemplate(t *testing.T) {
 	}
 }
 
+func TestBuild_analysisSection(t *testing.T) {
+	report, err := format.Build(format.RunMeta{
+		Hostname:    "host-a",
+		GeneratedAt: time.Date(2026, 8, 13, 12, 0, 0, 0, time.UTC),
+		Location:    time.UTC,
+		Analyses: []format.Analysis{
+			{Name: "google-ai", Text: "all clear"},
+			{Name: "other", Error: "down"},
+		},
+	}, nil)
+	if err != nil {
+		t.Fatalf("Build() error = %v", err)
+	}
+	if !strings.Contains(report.Body, "=== AI analysis (google-ai) ===\nall clear\n") {
+		t.Fatalf("Body = %q", report.Body)
+	}
+	if !strings.Contains(report.Body, "=== AI analysis (other) ===\nERROR: down\n") {
+		t.Fatalf("Body = %q", report.Body)
+	}
+}
+
 func TestLoad_fileAndErrors(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "short.tmpl")

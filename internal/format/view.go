@@ -35,6 +35,7 @@ type View struct {
 	Chkrootkit  *Chkrootkit
 	Lynis       *Lynis
 	Unattended  *Unattended
+	Analyses    []Analysis
 }
 
 // Fail2ban is one jail list, already parsed.
@@ -149,6 +150,7 @@ func newView(meta RunMeta, results []domain.ModuleResult) View {
 		Host:        meta.Hostname,
 		Time:        meta.GeneratedAt.In(loc),
 		ModuleNames: append([]string(nil), meta.ModuleOrder...),
+		Analyses:    append([]Analysis(nil), meta.Analyses...),
 	}
 	for _, result := range results {
 		view.add(result)

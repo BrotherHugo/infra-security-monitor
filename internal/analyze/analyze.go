@@ -13,7 +13,7 @@ type Input struct {
 	ModuleOrder []string
 }
 
-// Analyzer appends an analysis section to the report after format and before send.
+// Analyzer produces text for one report cycle. The template decides how to print it.
 type Analyzer interface {
 	Name() string
 	Append(ctx context.Context, in Input) (appendix string, err error)
