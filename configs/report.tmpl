@@ -26,13 +26,11 @@ id: {{.ID}}
 host: {{.Host}}
 time: {{.Time.Format "2006-01-02 15:04:05"}}
 modules: {{join .ModuleNames ", "}}
-{{- with .Fail2ban}}
-
+{{with .Fail2ban}}
 === fail2ban ===
 {{if .Error}}ERROR: {{.Error}}
 {{else}}{{range .Jails}}jail {{.Name}}: failed={{.CurrentlyFailed}}/{{.TotalFailed}} banned={{.CurrentlyBanned}}/{{.TotalBanned}} ips={{if .BannedIPs}}{{join .BannedIPs " "}}{{else}}-{{end}}
-{{end}}{{end}}{{end}}{{- with .Auditd}}
-
+{{end}}{{end}}{{end}}{{with .Auditd}}
 === auditd ===
 {{if .Error}}ERROR: {{.Error}}
 {{else}}summary: failed_logins={{.FailedLogins}} account_changes={{.AccountChanges}} config_changes={{.ConfigChanges}} anomalies={{.AnomalyEvents}} responses={{.AnomalyResponses}} avc={{.AVCs}} integrity={{.IntegrityEvents}}
@@ -42,8 +40,7 @@ modules: {{join .ModuleNames ", "}}
 {{template "eventBody" .Anomaly}}{{else}}anomaly: none
 {{end}}{{if .File.Total}}file events ({{.File.Total}}):
 {{template "eventBody" .File}}{{else}}file events: none
-{{end}}{{end}}{{end}}{{- with .Rkhunter}}
-
+{{end}}{{end}}{{end}}{{with .Rkhunter}}
 === rkhunter ===
 {{if .Error}}ERROR: {{.Error}}
 {{else}}{{if .HasSummary}}summary: files={{.FilesChecked}} suspect={{.SuspectFiles}} rootkits={{.RootkitsChecked}} possible_rootkits={{.PossibleRootkits}}
@@ -53,16 +50,14 @@ modules: {{join .ModuleNames ", "}}
 {{end}}{{if .WarningsTruncated}}  ... truncated
 {{end}}{{if .HasPropertyWarnings}}note: file property warnings after package updates may be false positives; run rkhunter --propupd if needed
 {{end}}{{else if not .HasSummary}}status: ok
-{{end}}{{end}}{{end}}{{- with .Chkrootkit}}
-
+{{end}}{{end}}{{end}}{{with .Chkrootkit}}
 === chkrootkit ===
 {{if .Error}}ERROR: {{.Error}}
 {{else}}{{if .Findings}}findings ({{.FindingTotal}}):
 {{range .Findings}}  {{.Line}}{{if .FPCode}} [{{.FPCode}}]{{end}}
 {{end}}{{if .FindingsTruncated}}  ... truncated
 {{end}}{{else}}findings: 0
-{{end}}{{end}}{{end}}{{- with .Lynis}}
-
+{{end}}{{end}}{{end}}{{with .Lynis}}
 === lynis ===
 {{if .Error}}ERROR: {{.Error}}
 {{else}}{{if .HardeningIndex}}hardening index: {{.HardeningIndex}}
@@ -70,8 +65,7 @@ modules: {{join .ModuleNames ", "}}
 {{range .Warnings}}  - {{.Text}}{{if .ID}} [{{.ID}}]{{end}}
 {{else}}  none
 {{end}}{{if .WarningsTruncated}}  ... truncated
-{{end}}{{end}}{{end}}{{- with .Unattended}}
-
+{{end}}{{end}}{{end}}{{with .Unattended}}
 === unattended-upgrades ===
 {{if .Error}}ERROR: {{.Error}}
 {{else}}last success: {{if .LastSuccessTime}}{{.LastSuccessTime.Format "2006-01-02 15:04:05"}}{{else}}not found{{end}}
@@ -83,13 +77,11 @@ stale: {{if .Stale}}yes (> {{.StaleDays}} days){{else}}no{{end}}
 {{end}}{{end}}{{if or .Stale .Warnings .KeptBack}}{{if .Tail}}tail:
 {{range .Tail}}  {{.}}
 {{end}}{{if .TailTruncated}}  ... last {{len .Tail}} of {{.TailTotal}}
-{{end}}{{end}}{{end}}{{end}}{{end}}
-{{- range .Analyses}}
-
+{{end}}{{end}}{{end}}{{end}}{{end}}{{range .Analyses}}
 === AI analysis ({{.Name}}) ===
 {{if .Error}}ERROR: {{.Error}}
 {{else}}{{.Text}}
-{{end}}{{end}}
+{{end}}{{end -}}
 {{- define "eventBody" -}}
 {{if .ByType}}  by type: {{template "counts" .ByType}}
 {{end}}{{if .ByAUID}}  by auid: {{template "counts" .ByAUID}}
