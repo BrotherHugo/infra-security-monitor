@@ -1,7 +1,6 @@
 package format
 
 import (
-	"fmt"
 	"sort"
 	"strings"
 	"time"
@@ -54,27 +53,31 @@ type Jail struct {
 	BannedIPs       []string
 }
 
-// Auditd is aureport analytics with counts sorted and capped.
+// Auditd holds structured aureport counters and event aggregates with no preset labels.
 type Auditd struct {
-	Error         string
-	Summary       []string
-	FailedLogins  int
-	AnomalyEvents int
-	Config        AuditEvents
-	Anomaly       AuditEvents
-	File          AuditEvents
+	Error            string
+	FailedLogins     int
+	AccountChanges   int
+	ConfigChanges    int
+	AnomalyEvents    int
+	AnomalyResponses int
+	AVCs             int
+	IntegrityEvents  int
+	Config           AuditEvents
+	Anomaly          AuditEvents
+	File             AuditEvents
 }
 
-// AuditEvents is one aureport block. Empty Total means none.
+// AuditEvents is one aureport block. Zero Total means no events.
 type AuditEvents struct {
-	Title  string
-	Total  int
-	ByType []Count
-	ByAUID []Count
-	ByPath []Count
-	Window string
-	Note   string
-	Sample []string
+	Total             int
+	ByType            []Count
+	ByAUID            []Count
+	ByPath            []Count
+	FirstTime         string
+	LastTime          string
+	HasNetfilterBurst bool
+	Sample            []string
 }
 
 // Count is one sorted tally entry.
@@ -83,60 +86,64 @@ type Count struct {
 	N    int
 }
 
-// TypeLine is "name=n, name=n" in count order.
-func (e AuditEvents) TypeLine() string { return joinCounts(e.ByType) }
-
-// AUIDLine is "name=n, name=n" in count order.
-func (e AuditEvents) AUIDLine() string { return joinCounts(e.ByAUID) }
-
-// PathLine is "name=n, name=n" in count order.
-func (e AuditEvents) PathLine() string { return joinCounts(e.ByPath) }
-
-// Rkhunter is the last run, with warnings already capped.
+// Rkhunter holds structured rkhunter counters and capped warning lists.
 type Rkhunter struct {
-	Error             string
-	Summary           []string
-	SuspectFiles      int
-	Warnings          []string
-	WarningTotal      int
-	WarningsTruncated bool
-	Note              string
+	Error               string
+	HasSummary          bool
+	FilesChecked        int
+	SuspectFiles        int
+	RootkitsChecked     int
+	PossibleRootkits    int
+	SuspectPaths        []string
+	WarningChecks       []string
+	Warnings            []string
+	WarningTotal        int
+	WarningsTruncated   bool
+	HasPropertyWarnings bool
 }
 
-// Chkrootkit is capped findings. Reason is set for a possible false positive.
+// Chkrootkit holds capped findings and structured false-positive markers.
 type Chkrootkit struct {
-	Error             string
-	FindingTotal      int
-	Findings          []Finding
-	FindingsTruncated bool
+	Error              string
+	FindingTotal       int
+	FalsePositiveTotal int
+	Findings           []Finding
+	FindingsTruncated  bool
 }
 
-// Finding is one chkrootkit line.
+// Finding is one chkrootkit line with structured false-positive metadata.
 type Finding struct {
-	Line   string
-	Reason string
+	Line          string
+	FalsePositive bool
+	FPCode        string
 }
 
-// Lynis is the hardening summary. Warnings is capped; WarningTotal is the full count.
+// Lynis holds the hardening index and structured warnings with test IDs separated.
 type Lynis struct {
 	Error             string
 	HardeningIndex    int
 	WarningTotal      int
-	Warnings          []string
+	Warnings          []LynisWarning
 	WarningsTruncated bool
 }
 
-// Unattended is the log tail. Tail is the last lines only.
+// LynisWarning is one Lynis warning with ID (e.g. "PKGS-7392") separated from Text.
+type LynisWarning struct {
+	ID   string
+	Text string
+}
+
+// Unattended holds structured unattended-upgrades timestamps, flags, and capped lines.
 type Unattended struct {
-	Error         string
-	LastSuccess   string
-	Stale         bool
-	StaleDays     int
-	Warnings      []string
-	KeptBack      []string
-	Tail          []string
-	TailTotal     int
-	TailTruncated bool
+	Error           string
+	LastSuccessTime *time.Time
+	Stale           bool
+	StaleDays       int
+	Warnings        []string
+	KeptBack        []string
+	Tail            []string
+	TailTotal       int
+	TailTruncated   bool
 }
 
 func newView(meta RunMeta, results []domain.ModuleResult) View {
@@ -200,11 +207,7 @@ func fail2banView(result domain.ModuleResult) *Fail2ban {
 }
 
 func auditdView(result domain.ModuleResult) *Auditd {
-	out := &Auditd{
-		Config:  AuditEvents{Title: "config change"},
-		Anomaly: AuditEvents{Title: "anomaly"},
-		File:    AuditEvents{Title: "file events"},
-	}
+	out := &Auditd{}
 	if result.Status == domain.ModuleStatusError {
 		out.Error = moduleError(result)
 		return out
@@ -213,19 +216,20 @@ func auditdView(result domain.ModuleResult) *Auditd {
 	if !ok {
 		return out
 	}
-	out.Summary = append([]string(nil), snap.Summary.KeyLines...)
 	out.FailedLogins = snap.Summary.FailedLogins
+	out.AccountChanges = snap.Summary.AccountChanges
+	out.ConfigChanges = snap.Summary.ConfigChanges
 	out.AnomalyEvents = snap.Summary.AnomalyEvents
+	out.AnomalyResponses = snap.Summary.AnomalyResponses
+	out.AVCs = snap.Summary.AVCs
+	out.IntegrityEvents = snap.Summary.IntegrityEvents
 
-	note := ""
-	if _, ok := snap.Config.ByType["NETFILTER_CFG"]; ok {
-		note = auditd.NetfilterNote
-	}
+	_, netfilterBurst := snap.Config.ByType["NETFILTER_CFG"]
 	configTotal := 0
 	if snap.Config.HasEvents {
 		configTotal = snap.Config.Total
 	}
-	out.Config = auditEvents("config change", configTotal, snap.Config.EventAggregate, preferSample(snap.Config.InterestingSample, snap.Config.Sample), note)
+	out.Config = auditEvents(configTotal, snap.Config.EventAggregate, preferSample(snap.Config.InterestingSample, snap.Config.Sample), netfilterBurst)
 
 	anomalyTotal := snap.Anomaly.Total
 	if snap.Summary.AnomalyEvents > anomalyTotal {
@@ -234,13 +238,13 @@ func auditdView(result domain.ModuleResult) *Auditd {
 	if !snap.Anomaly.HasEvents && snap.Summary.AnomalyEvents == 0 {
 		anomalyTotal = 0
 	}
-	out.Anomaly = auditEvents("anomaly", anomalyTotal, snap.Anomaly.EventAggregate, snap.Anomaly.Sample, "")
+	out.Anomaly = auditEvents(anomalyTotal, snap.Anomaly.EventAggregate, snap.Anomaly.Sample, false)
 
 	fileTotal := 0
 	if snap.File.HasEvents {
 		fileTotal = snap.File.Total
 	}
-	out.File = auditEvents("file events", fileTotal, snap.File.EventAggregate, snap.File.Sample, "")
+	out.File = auditEvents(fileTotal, snap.File.EventAggregate, snap.File.Sample, false)
 	return out
 }
 
@@ -254,13 +258,15 @@ func rkhunterView(result domain.ModuleResult) *Rkhunter {
 	if !ok {
 		return out
 	}
-	out.Summary = append([]string(nil), parsed.SummaryLines...)
+	out.HasSummary = parsed.HasSummary || len(parsed.SummaryLines) > 0
+	out.FilesChecked = parsed.FilesChecked
 	out.SuspectFiles = parsed.SuspectFiles
+	out.RootkitsChecked = parsed.RootkitsChecked
+	out.PossibleRootkits = parsed.PossibleRootkits
 	out.WarningTotal = len(parsed.Targets) + len(parsed.Warnings)
+	out.SuspectPaths, out.WarningChecks = splitRkhunterTargets(parsed.Targets, parsed.Warnings, maxListLines)
 	out.Warnings, out.WarningsTruncated = rkhunterLines(parsed.Targets, parsed.Warnings, maxListLines)
-	if out.WarningTotal > 0 {
-		out.Note = rkhunter.FalsePositiveNote
-	}
+	out.HasPropertyWarnings = len(parsed.Warnings) > 0 || len(out.SuspectPaths) > 0 || parsed.SuspectFiles > 0
 	return out
 }
 
@@ -278,6 +284,7 @@ func chkrootkitView(result domain.ModuleResult) *Chkrootkit {
 	if out.FindingTotal < len(parsed.Findings) {
 		out.FindingTotal = len(parsed.Findings)
 	}
+	out.FalsePositiveTotal = parsed.FalsePositive
 	shown := parsed.Findings
 	if len(shown) > maxListLines {
 		shown = shown[:maxListLines]
@@ -285,7 +292,11 @@ func chkrootkitView(result domain.ModuleResult) *Chkrootkit {
 	}
 	out.Findings = make([]Finding, len(shown))
 	for i, finding := range shown {
-		out.Findings[i] = Finding{Line: finding.Line, Reason: finding.Reason}
+		out.Findings[i] = Finding{
+			Line:          finding.Line,
+			FalsePositive: finding.PossibleFalsePositive,
+			FPCode:        finding.FPCode,
+		}
 	}
 	return out
 }
@@ -305,12 +316,18 @@ func lynisView(result domain.ModuleResult) *Lynis {
 	if out.WarningTotal < len(parsed.Warnings) {
 		out.WarningTotal = len(parsed.Warnings)
 	}
-	out.Warnings, out.WarningsTruncated = capStrings(parsed.Warnings, maxListLines)
+	capped, truncated := capStrings(parsed.Warnings, maxListLines)
+	out.WarningsTruncated = truncated
+	out.Warnings = make([]LynisWarning, len(capped))
+	for i, raw := range capped {
+		item := lynis.SplitWarning(raw)
+		out.Warnings[i] = LynisWarning{ID: item.ID, Text: item.Text}
+	}
 	return out
 }
 
 func unattendedView(result domain.ModuleResult) *Unattended {
-	out := &Unattended{LastSuccess: "not found"}
+	out := &Unattended{}
 	if result.Status == domain.ModuleStatusError {
 		out.Error = moduleError(result)
 		return out
@@ -319,8 +336,9 @@ func unattendedView(result domain.ModuleResult) *Unattended {
 	if !ok {
 		return out
 	}
-	if strings.TrimSpace(parsed.LastSuccessRaw) != "" {
-		out.LastSuccess = parsed.LastSuccessRaw
+	if parsed.LastSuccess != nil {
+		ts := *parsed.LastSuccess
+		out.LastSuccessTime = &ts
 	}
 	out.Stale = parsed.Stale
 	out.StaleDays = parsed.StaleDays
@@ -330,8 +348,8 @@ func unattendedView(result domain.ModuleResult) *Unattended {
 	return out
 }
 
-func auditEvents(title string, total int, agg auditd.EventAggregate, sample []string, note string) AuditEvents {
-	out := AuditEvents{Title: title}
+func auditEvents(total int, agg auditd.EventAggregate, sample []string, netfilterBurst bool) AuditEvents {
+	var out AuditEvents
 	if total == 0 {
 		return out
 	}
@@ -339,10 +357,9 @@ func auditEvents(title string, total int, agg auditd.EventAggregate, sample []st
 	out.ByType = topCounts(agg.ByType, maxTopCounts)
 	out.ByAUID = topCounts(agg.ByAUID, maxTopCounts)
 	out.ByPath = topCounts(agg.ByPath, maxTopCounts)
-	if agg.FirstTime != "" && agg.LastTime != "" {
-		out.Window = agg.FirstTime + " .. " + agg.LastTime
-	}
-	out.Note = note
+	out.FirstTime = agg.FirstTime
+	out.LastTime = agg.LastTime
+	out.HasNetfilterBurst = netfilterBurst
 	out.Sample = append([]string(nil), sample...)
 	return out
 }
@@ -352,6 +369,25 @@ func preferSample(interesting, fallback []string) []string {
 		return interesting
 	}
 	return fallback
+}
+
+func splitRkhunterTargets(targets, blocks []string, limit int) (paths, checks []string) {
+	for _, target := range targets {
+		if strings.HasPrefix(target, "/") {
+			if len(paths) < limit {
+				paths = append(paths, target)
+			}
+		} else if len(checks) < limit {
+			checks = append(checks, target)
+		}
+	}
+	for _, block := range blocks {
+		if len(checks) >= limit {
+			break
+		}
+		checks = append(checks, strings.Split(block, "\n")...)
+	}
+	return paths, checks
 }
 
 func rkhunterLines(targets, blocks []string, limit int) ([]string, bool) {
@@ -393,17 +429,6 @@ func topCounts(counts map[string]int, limit int) []Count {
 		items = items[:limit]
 	}
 	return items
-}
-
-func joinCounts(counts []Count) string {
-	if len(counts) == 0 {
-		return ""
-	}
-	parts := make([]string, len(counts))
-	for i, count := range counts {
-		parts[i] = fmt.Sprintf("%s=%d", count.Name, count.N)
-	}
-	return strings.Join(parts, ", ")
 }
 
 func capStrings(in []string, n int) ([]string, bool) {

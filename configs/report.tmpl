@@ -1,21 +1,25 @@
 {{- /*
-Built-in report. A nil module did not run and its section is skipped.
+Built-in report. Every label and heading lives in this template — Go passes only typed values.
+A nil module pointer did not run and its section is skipped.
 
 Root: .ID .Host .Time .ModuleNames
       .Fail2ban .Auditd .Rkhunter .Chkrootkit .Lynis .Unattended
       .Analyses[].Name .Text .Error
 Func: join
-Lists below are already capped. Full tool output stays in raw_json.
+Lists below are already capped and auditd counts sorted. Full tool output stays in raw_json.
   Fail2ban.Jails: .Name .CurrentlyFailed .TotalFailed .CurrentlyBanned .TotalBanned .BannedIPs
-  Auditd: .Summary .FailedLogins .AnomalyEvents
-          .Config .Anomaly .File — .Title .Total .TypeLine .AUIDLine .PathLine .Window .Note .Sample
-  Rkhunter: .Summary .SuspectFiles .Warnings .WarningTotal .WarningsTruncated .Note
-  Chkrootkit: .FindingTotal .FindingsTruncated .Findings[].Line .Reason
-  Lynis: .HardeningIndex .WarningTotal .Warnings .WarningsTruncated
-  Unattended: .LastSuccess .Stale .StaleDays .Warnings .KeptBack .Tail .TailTotal .TailTruncated
+  Auditd: .FailedLogins .AccountChanges .ConfigChanges .AnomalyEvents .AnomalyResponses .AVCs .IntegrityEvents
+          .Config .Anomaly .File — .Total .ByType .ByAUID .ByPath ([]Count{.Name,.N})
+                                   .FirstTime .LastTime .HasNetfilterBurst .Sample
+  Rkhunter: .HasSummary .FilesChecked .SuspectFiles .RootkitsChecked .PossibleRootkits
+            .SuspectPaths .WarningChecks .Warnings .WarningTotal .WarningsTruncated .HasPropertyWarnings
+  Chkrootkit: .FindingTotal .FalsePositiveTotal .FindingsTruncated
+              .Findings[].Line .FalsePositive .FPCode
+  Lynis: .HardeningIndex .WarningTotal .WarningsTruncated .Warnings[].ID .Text
+  Unattended: .LastSuccessTime (*time.Time, nil if none) .Stale .StaleDays
+              .Warnings .KeptBack .Tail .TailTotal .TailTruncated
   Every module: .Error (empty unless collect failed)
-  Analyses: one entry per enabled analyzer. .Text is the model reply. .Error is the call failure.
-    The heading below is this template's choice.
+  Analyses: one entry per enabled analyzer (.Name .Text .Error).
 */ -}}
 Security Audit
 id: {{.ID}}
@@ -31,26 +35,30 @@ modules: {{join .ModuleNames ", "}}
 
 === auditd ===
 {{if .Error}}ERROR: {{.Error}}
-{{else}}Summary Report:
-{{range .Summary}}  {{.}}
-{{end}}{{template "events" .Config}}{{template "events" .Anomaly}}{{template "events" .File}}{{end}}{{end}}{{- with .Rkhunter}}
+{{else}}summary: failed_logins={{.FailedLogins}} account_changes={{.AccountChanges}} config_changes={{.ConfigChanges}} anomalies={{.AnomalyEvents}} responses={{.AnomalyResponses}} avc={{.AVCs}} integrity={{.IntegrityEvents}}
+{{if .Config.Total}}config change ({{.Config.Total}}):
+{{template "eventBody" .Config}}{{else}}config change: none
+{{end}}{{if .Anomaly.Total}}anomaly ({{.Anomaly.Total}}):
+{{template "eventBody" .Anomaly}}{{else}}anomaly: none
+{{end}}{{if .File.Total}}file events ({{.File.Total}}):
+{{template "eventBody" .File}}{{else}}file events: none
+{{end}}{{end}}{{end}}{{- with .Rkhunter}}
 
 === rkhunter ===
 {{if .Error}}ERROR: {{.Error}}
-{{else}}{{if .Summary}}system checks summary:
-{{range .Summary}}  {{.}}
-{{end}}{{end}}{{if .SuspectFiles}}suspect files: {{.SuspectFiles}}
+{{else}}{{if .HasSummary}}summary: files={{.FilesChecked}} suspect={{.SuspectFiles}} rootkits={{.RootkitsChecked}} possible_rootkits={{.PossibleRootkits}}
+{{else if .SuspectFiles}}suspect files: {{.SuspectFiles}}
 {{end}}{{if .Warnings}}warnings ({{.WarningTotal}}):
 {{range .Warnings}}  {{.}}
 {{end}}{{if .WarningsTruncated}}  ... truncated
-{{end}}{{if .Note}}{{.Note}}
-{{end}}{{else if not .Summary}}status: ok
+{{end}}{{if .HasPropertyWarnings}}note: file property warnings after package updates may be false positives; run rkhunter --propupd if needed
+{{end}}{{else if not .HasSummary}}status: ok
 {{end}}{{end}}{{end}}{{- with .Chkrootkit}}
 
 === chkrootkit ===
 {{if .Error}}ERROR: {{.Error}}
 {{else}}{{if .Findings}}findings ({{.FindingTotal}}):
-{{range .Findings}}  {{.Line}}{{if .Reason}} [{{.Reason}}]{{end}}
+{{range .Findings}}  {{.Line}}{{if .FPCode}} [{{.FPCode}}]{{end}}
 {{end}}{{if .FindingsTruncated}}  ... truncated
 {{end}}{{else}}findings: 0
 {{end}}{{end}}{{end}}{{- with .Lynis}}
@@ -59,14 +67,14 @@ modules: {{join .ModuleNames ", "}}
 {{if .Error}}ERROR: {{.Error}}
 {{else}}{{if .HardeningIndex}}hardening index: {{.HardeningIndex}}
 {{end}}warnings ({{.WarningTotal}}):
-{{range .Warnings}}  {{.}}
+{{range .Warnings}}  - {{.Text}}{{if .ID}} [{{.ID}}]{{end}}
 {{else}}  none
 {{end}}{{if .WarningsTruncated}}  ... truncated
 {{end}}{{end}}{{end}}{{- with .Unattended}}
 
 === unattended-upgrades ===
 {{if .Error}}ERROR: {{.Error}}
-{{else}}last success: {{.LastSuccess}}
+{{else}}last success: {{if .LastSuccessTime}}{{.LastSuccessTime.Format "2006-01-02 15:04:05"}}{{else}}not found{{end}}
 stale: {{if .Stale}}yes (> {{.StaleDays}} days){{else}}no{{end}}
 {{if .Warnings}}warnings ({{len .Warnings}}):
 {{range .Warnings}}  {{.}}
@@ -82,14 +90,13 @@ stale: {{if .Stale}}yes (> {{.StaleDays}} days){{else}}no{{end}}
 {{if .Error}}ERROR: {{.Error}}
 {{else}}{{.Text}}
 {{end}}{{end}}
-{{- define "events" -}}
-{{if .Total}}{{.Title}} ({{.Total}}):
-{{if .TypeLine}}  by type: {{.TypeLine}}
-{{end}}{{if .AUIDLine}}  by auid: {{.AUIDLine}}
-{{end}}{{if .PathLine}}  by path: {{.PathLine}}
-{{end}}{{if .Window}}  window: {{.Window}}
-{{end}}{{if .Note}}  {{.Note}}
+{{- define "eventBody" -}}
+{{if .ByType}}  by type: {{template "counts" .ByType}}
+{{end}}{{if .ByAUID}}  by auid: {{template "counts" .ByAUID}}
+{{end}}{{if .ByPath}}  by path: {{template "counts" .ByPath}}
+{{end}}{{if and .FirstTime .LastTime}}  window: {{.FirstTime}} .. {{.LastTime}}
+{{end}}{{if .HasNetfilterBurst}}  note: NETFILTER_CFG bursts are often fail2ban/iptables reloads
 {{end}}{{if .Sample}}  sample:
 {{range .Sample}}    {{.}}
-{{end}}{{end}}{{end}}{{if not .Total}}{{.Title}}: none
-{{end}}{{end -}}
+{{end}}{{end}}{{end -}}
+{{- define "counts" -}}{{range $i, $c := .}}{{if $i}}, {{end}}{{$c.Name}}={{$c.N}}{{end}}{{- end -}}

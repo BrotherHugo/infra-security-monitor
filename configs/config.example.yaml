@@ -32,9 +32,9 @@ modules:
     stale_days: 3
 
 reporting:
+  template: report.tmpl  # beside config.yaml; deb/postinst installs /etc/ism/report.tmpl; omit = built-in
   time:
     - "03:30"
-  template: report.tmpl  # beside config.yaml; deb/postinst installs /etc/ism/report.tmpl; omit = built-in
   channels:
     file:
       save_to_dir: /var/lib/ism/reports

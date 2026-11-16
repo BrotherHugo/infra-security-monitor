@@ -36,11 +36,16 @@ var summaryLineMarkers = []string{
 	"Number of integrity events:",
 }
 
-// Summary holds key lines from aureport --summary.
+// Summary holds key lines and parsed counters from aureport --summary.
 type Summary struct {
-	KeyLines      []string `json:"key_lines"`
-	FailedLogins  int      `json:"failed_logins"`
-	AnomalyEvents int      `json:"anomaly_events"`
+	KeyLines         []string `json:"key_lines"`
+	FailedLogins     int      `json:"failed_logins"`
+	AccountChanges   int      `json:"account_changes"`
+	ConfigChanges    int      `json:"config_changes"`
+	AnomalyEvents    int      `json:"anomaly_events"`
+	AnomalyResponses int      `json:"anomaly_responses"`
+	AVCs             int      `json:"avcs"`
+	IntegrityEvents  int      `json:"integrity_events"`
 }
 
 // EventAggregate aggregates aureport event lines.
@@ -101,6 +106,20 @@ func ParseSummary(stdout string) (Summary, error) {
 		}
 		if isSummaryKeyLine(line) {
 			summary.KeyLines = append(summary.KeyLines, line)
+			if v, ok := parseColonInt(line); ok {
+				switch {
+				case strings.Contains(line, "changes to accounts, groups, or role"):
+					summary.AccountChanges = v
+				case strings.Contains(line, "Number of changes in configuration:"):
+					summary.ConfigChanges = v
+				case strings.Contains(line, "responses to anomaly events:"):
+					summary.AnomalyResponses = v
+				case strings.Contains(line, "Number of AVC"):
+					summary.AVCs = v
+				case strings.Contains(line, "Number of integrity events:"):
+					summary.IntegrityEvents = v
+				}
+			}
 		}
 	}
 	if len(summary.KeyLines) == 0 {
@@ -490,6 +509,18 @@ func parseTrailingInt(line, label string) (int, error) {
 		return 0, fmt.Errorf("parse int %q: %w", raw, err)
 	}
 	return value, nil
+}
+
+func parseColonInt(line string) (int, bool) {
+	idx := strings.LastIndex(line, ":")
+	if idx < 0 {
+		return 0, false
+	}
+	value, err := strconv.Atoi(strings.TrimSpace(line[idx+1:]))
+	if err != nil {
+		return 0, false
+	}
+	return value, true
 }
 
 func isNoEventsOutput(stdout string) bool {

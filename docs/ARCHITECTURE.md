@@ -133,7 +133,7 @@ Each package: run command or read log → store raw output in `raw_json` → par
 
 Renders the plain-text report with `text/template`. `reporting.template` is a file path (relative paths start at the config file's directory). Empty uses the built-in `default.tmpl`.
 
-The template object has run metadata, a named field per module, and `.Analyses`. Module fields are built at render time from the in-memory parse: lists capped, auditd maps turned into sorted top counts, rkhunter false-positive text in `.Note`. A module that did not run is nil. Analyzers run before render; the built-in template prints `=== AI analysis (name) ===`. The YAML config is not passed in.
+The template object has run metadata, a named field per module, and `.Analyses`. Module fields carry only typed values (counters, timestamps, booleans, test IDs, sorted count slices, capped lists) — no preset English labels or notes from Go. A module that did not run is nil. Analyzers run before render; the built-in template prints `=== AI analysis (name) ===`. The YAML config is not passed in.
 
 ### `internal/store/sqlite`
 
