@@ -14,6 +14,14 @@ type RunMeta struct {
 	GeneratedAt time.Time
 	Location    *time.Location
 	ModuleOrder []string
+	Analyses    []Analysis
+}
+
+// Analysis is one analyzer result for the template. Error is set when the call failed.
+type Analysis struct {
+	Name  string
+	Text  string
+	Error string
 }
 
 // Build renders the built-in template.

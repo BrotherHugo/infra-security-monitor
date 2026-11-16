@@ -15,19 +15,26 @@ const (
 )
 
 var (
-	warningBracketRE = regexp.MustCompile(`(?i)^(.+?)\s+\[\s*warning\s*\]\s*$`)
-	suspectFilesRE   = regexp.MustCompile(`(?i)Suspect files:\s*(\d+)`)
-	logTimestampRE   = regexp.MustCompile(`^\[\d{2}:\d{2}:\d{2}\]\s*`)
+	warningBracketRE   = regexp.MustCompile(`(?i)^(.+?)\s+\[\s*warning\s*\]\s*$`)
+	filesCheckedRE     = regexp.MustCompile(`(?i)(?:Files checked|Number of files)\s*:\s*(\d+)`)
+	suspectFilesRE     = regexp.MustCompile(`(?i)Suspect files\s*:\s*(\d+)`)
+	rootkitsCheckedRE  = regexp.MustCompile(`(?i)(?:Rootkits checked|Rootkit checks)\s*:\s*(\d+)`)
+	possibleRootkitsRE = regexp.MustCompile(`(?i)Possible rootkits\s*:\s*(\d+)`)
+	logTimestampRE     = regexp.MustCompile(`^\[\d{2}:\d{2}:\d{2}\]\s*`)
 )
 
 // ParseResult is the rkhunter log or stdout parse result.
 type ParseResult struct {
-	SummaryLines []string `json:"summary_lines"`
-	Warnings     []string `json:"warnings"` // Warning: blocks (file property changes)
-	Targets      []string `json:"targets"`  // lines with [ Warning ]: paths and checks
-	WarningCount int      `json:"warning_count"`
-	SuspectFiles int      `json:"suspect_files"`
-	CleanRun     bool     `json:"clean_run,omitempty"`
+	SummaryLines     []string `json:"summary_lines"`
+	Warnings         []string `json:"warnings"` // Warning: blocks (file property changes)
+	Targets          []string `json:"targets"`  // lines with [ Warning ]: paths and checks
+	WarningCount     int      `json:"warning_count"`
+	HasSummary       bool     `json:"has_summary,omitempty"`
+	FilesChecked     int      `json:"files_checked"`
+	SuspectFiles     int      `json:"suspect_files"`
+	RootkitsChecked  int      `json:"rootkits_checked"`
+	PossibleRootkits int      `json:"possible_rootkits"`
+	CleanRun         bool     `json:"clean_run,omitempty"`
 }
 
 // ExtractLastRun returns the last log chunk after the check started marker.
@@ -77,9 +84,28 @@ func Parse(content string) (ParseResult, error) {
 			continue
 		}
 
+		if m := filesCheckedRE.FindStringSubmatch(trimmed); len(m) == 2 {
+			if n, err := parseInt(m[1]); err == nil {
+				result.FilesChecked = n
+				result.HasSummary = true
+			}
+		}
 		if m := suspectFilesRE.FindStringSubmatch(trimmed); len(m) == 2 {
 			if n, err := parseInt(m[1]); err == nil {
 				result.SuspectFiles = n
+				result.HasSummary = true
+			}
+		}
+		if m := rootkitsCheckedRE.FindStringSubmatch(trimmed); len(m) == 2 {
+			if n, err := parseInt(m[1]); err == nil {
+				result.RootkitsChecked = n
+				result.HasSummary = true
+			}
+		}
+		if m := possibleRootkitsRE.FindStringSubmatch(trimmed); len(m) == 2 {
+			if n, err := parseInt(m[1]); err == nil {
+				result.PossibleRootkits = n
+				result.HasSummary = true
 			}
 		}
 
@@ -92,6 +118,7 @@ func Parse(content string) (ParseResult, error) {
 		if strings.HasPrefix(trimmed, "System checks summary") {
 			flushWarningBlock()
 			inSummary = true
+			result.HasSummary = true
 			result.SummaryLines = append(result.SummaryLines, trimmed)
 			continue
 		}

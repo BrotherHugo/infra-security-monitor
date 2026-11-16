@@ -2,25 +2,29 @@ package analyze
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"strings"
 )
 
-// AppendAll calls analyzers in order and appends to body.
-// On a single analyzer error the cycle continues; errCount is the number of failures.
-func AppendAll(ctx context.Context, body string, analyzers []Analyzer, in Input) (newBody string, errCount int) {
-	newBody = body
+// Result is one analyzer outcome. The report template prints Name, Text, and Error.
+type Result struct {
+	Name  string
+	Text  string
+	Error string
+}
+
+// Run calls analyzers in order. A failure is a Result with Error set; the rest still run.
+func Run(ctx context.Context, analyzers []Analyzer, in Input) (results []Result, errCount int) {
+	results = make([]Result, 0, len(analyzers))
 	for _, a := range analyzers {
-		header := fmt.Sprintf("\n=== AI analysis (%s) ===\n", a.Name())
-		appendix, err := a.Append(ctx, in)
+		text, err := a.Append(ctx, in)
 		if err != nil {
 			errCount++
 			slog.ErrorContext(ctx, "analyzer failed", "analyzer", a.Name(), "err", err)
-			newBody += header + "ERROR: " + err.Error() + "\n"
+			results = append(results, Result{Name: a.Name(), Error: err.Error()})
 			continue
 		}
-		newBody += header + strings.TrimSpace(appendix) + "\n"
+		results = append(results, Result{Name: a.Name(), Text: strings.TrimSpace(text)})
 	}
-	return newBody, errCount
+	return results, errCount
 }

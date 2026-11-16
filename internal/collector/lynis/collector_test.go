@@ -31,6 +31,10 @@ func TestParse_ok(t *testing.T) {
 	if parsed.WarningCount != 0 {
 		t.Fatalf("WarningCount = %d, want 0", parsed.WarningCount)
 	}
+	item := lynis.SplitWarning("! Found one or more vulnerable packages. [PKGS-7392]")
+	if item.ID != "PKGS-7392" || item.Text != "Found one or more vulnerable packages." {
+		t.Fatalf("SplitWarning() = %+v", item)
+	}
 }
 
 func TestParse_fullRun(t *testing.T) {

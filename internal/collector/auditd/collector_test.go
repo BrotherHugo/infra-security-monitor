@@ -21,6 +21,9 @@ func TestParseSummary_ok(t *testing.T) {
 	if summary.FailedLogins != 0 {
 		t.Fatalf("FailedLogins = %d, want 0", summary.FailedLogins)
 	}
+	if summary.ConfigChanges != 0 || summary.AccountChanges != 0 || summary.IntegrityEvents != 0 {
+		t.Fatalf("unexpected non-zero summary counters: %+v", summary)
+	}
 	if summary.AnomalyEvents != 0 {
 		t.Fatalf("AnomalyEvents = %d, want 0", summary.AnomalyEvents)
 	}

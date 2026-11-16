@@ -111,6 +111,23 @@ func (s *Service) RunCycle(ctx context.Context) error {
 	}
 
 	generatedAt := s.clock()
+	outcomes, analyzerErrors := analyze.Run(ctx, s.analyzers, analyze.Input{
+		Report: domain.TextReport{
+			GeneratedAt: generatedAt,
+			Hostname:    hostname,
+		},
+		Results:     moduleResults,
+		ModuleOrder: s.moduleOrder,
+	})
+	analyses := make([]format.Analysis, len(outcomes))
+	for i, outcome := range outcomes {
+		analyses[i] = format.Analysis{
+			Name:  outcome.Name,
+			Text:  outcome.Text,
+			Error: outcome.Error,
+		}
+	}
+
 	renderer := s.renderer
 	if renderer == nil {
 		renderer = format.DefaultRenderer()
@@ -121,18 +138,11 @@ func (s *Service) RunCycle(ctx context.Context) error {
 		GeneratedAt: generatedAt,
 		Location:    s.location,
 		ModuleOrder: s.moduleOrder,
+		Analyses:    analyses,
 	}, moduleResults)
 	if err != nil {
 		return fmt.Errorf("format report: %w", err)
 	}
-
-	analyzerInput := analyze.Input{
-		Report:      report,
-		Results:     moduleResults,
-		ModuleOrder: s.moduleOrder,
-	}
-	var analyzerErrors int
-	report.Body, analyzerErrors = analyze.AppendAll(ctx, report.Body, s.analyzers, analyzerInput)
 
 	channelErrors := s.sendReport(ctx, report)
 

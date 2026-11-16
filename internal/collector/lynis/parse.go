@@ -10,17 +10,39 @@ import (
 var (
 	hardeningIndexRE = regexp.MustCompile(`(?i)hardening\s+index\s*:\s*(\d+)`)
 	warningsCountRE  = regexp.MustCompile(`(?i)warnings?\s*\(\s*(\d+)\s*\)`)
+	trailingTestIDRE = regexp.MustCompile(`^(.*?)\s*\[([A-Z0-9-]+)\]\s*$`)
 )
 
 const maxWarningLines = 50
 
+// WarningItem is one parsed Lynis warning with bullet and trailing [TEST-ID] separated.
+type WarningItem struct {
+	ID   string `json:"id,omitempty"`
+	Text string `json:"text"`
+}
+
+// SplitWarning extracts the clean warning message and trailing [TEST-ID] code from a Lynis bullet line.
+func SplitWarning(raw string) WarningItem {
+	s := strings.TrimSpace(raw)
+	if strings.HasPrefix(s, "!") || strings.HasPrefix(s, "-") {
+		s = strings.TrimSpace(s[1:])
+	}
+	if m := trailingTestIDRE.FindStringSubmatch(s); len(m) == 3 {
+		return WarningItem{
+			ID:   m[2],
+			Text: strings.TrimSpace(m[1]),
+		}
+	}
+	return WarningItem{Text: s}
+}
+
 // ParseResult is the lynis stdout parse result.
 type ParseResult struct {
-	HardeningIndex int      `json:"hardening_index"`
-	WarningCount   int      `json:"warning_count"`
-	Warnings       []string `json:"warnings"`
-	HasStdoutSummary bool   `json:"has_stdout_summary,omitempty"`
-	FromReportFile   bool   `json:"from_report_file,omitempty"`
+	HardeningIndex   int      `json:"hardening_index"`
+	WarningCount     int      `json:"warning_count"`
+	Warnings         []string `json:"warnings"`
+	HasStdoutSummary bool     `json:"has_stdout_summary,omitempty"`
+	FromReportFile   bool     `json:"from_report_file,omitempty"`
 }
 
 // Parse parses lynis audit system --quick stdout/stderr.

@@ -33,6 +33,16 @@ func TestParse_findingsWithFP(t *testing.T) {
 	if parsed.FalsePositive == 0 {
 		t.Fatal("FalsePositive = 0, want > 0")
 	}
+	foundCode := false
+	for _, f := range parsed.Findings {
+		if f.PossibleFalsePositive && f.FPCode != "" {
+			foundCode = true
+			break
+		}
+	}
+	if !foundCode {
+		t.Fatalf("expected non-empty FPCode on false positive finding: %+v", parsed.Findings)
+	}
 }
 
 func TestParse_fullRun(t *testing.T) {

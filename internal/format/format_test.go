@@ -8,9 +8,11 @@ import (
 	"time"
 
 	"github.com/BrotherHugo/infra-security-monitor/internal/collector/auditd"
+	"github.com/BrotherHugo/infra-security-monitor/internal/collector/chkrootkit"
 	"github.com/BrotherHugo/infra-security-monitor/internal/collector/fail2ban"
 	"github.com/BrotherHugo/infra-security-monitor/internal/collector/lynis"
 	"github.com/BrotherHugo/infra-security-monitor/internal/collector/rkhunter"
+	"github.com/BrotherHugo/infra-security-monitor/internal/collector/unattendedupgrades"
 	"github.com/BrotherHugo/infra-security-monitor/internal/domain"
 	"github.com/BrotherHugo/infra-security-monitor/internal/format"
 )
@@ -68,12 +70,10 @@ func TestBuild_reportLayout(t *testing.T) {
 		"=== fail2ban ===",
 		"jail sshd: failed=1/1 banned=0/0 ips=-",
 		"",
-		"",
 		"=== rkhunter ===",
 		"warnings (1):",
 		"  /tmp/x [ Warning ]",
-		rkhunter.FalsePositiveNote,
-		"",
+		"note: file property warnings after package updates may be false positives; run rkhunter --propupd if needed",
 		"",
 		"=== lynis ===",
 		"hardening index: 70",
@@ -214,6 +214,134 @@ func TestBuild_capsAndSortsBeforeTemplate(t *testing.T) {
 	}
 	if !strings.Contains(report.Body, "by type: J=10, I=9, H=8, G=7, F=6, E=5, D=4, C=3") {
 		t.Fatalf("Body missing sorted top: %q", report.Body)
+	}
+}
+
+func TestBuild_analysisSection(t *testing.T) {
+	report, err := format.Build(format.RunMeta{
+		Hostname:    "host-a",
+		GeneratedAt: time.Date(2026, 8, 13, 12, 0, 0, 0, time.UTC),
+		Location:    time.UTC,
+		Analyses: []format.Analysis{
+			{Name: "google-ai", Text: "all clear"},
+			{Name: "other", Error: "down"},
+		},
+	}, nil)
+	if err != nil {
+		t.Fatalf("Build() error = %v", err)
+	}
+	if !strings.Contains(report.Body, "=== AI analysis (google-ai) ===\nall clear\n") {
+		t.Fatalf("Body = %q", report.Body)
+	}
+	if !strings.Contains(report.Body, "=== AI analysis (other) ===\nERROR: down\n") {
+		t.Fatalf("Body = %q", report.Body)
+	}
+}
+
+func TestBuild_minimalFingerprintTemplate(t *testing.T) {
+	tmpl := strings.TrimSpace(`
+{{.Host}}|{{.Time.Format "02.01 15:04"}}
+{{- with .Fail2ban}}
+f2b:{{range .Jails}} {{.Name}}={{.CurrentlyBanned}}/{{.TotalBanned}}{{end}}
+{{- end}}
+{{- with .Auditd}}
+aud: fl={{.FailedLogins}} cfg={{.ConfigChanges}} nf={{.Config.HasNetfilterBurst}}
+{{- end}}
+{{- with .Rkhunter}}
+rkh: {{.SuspectFiles}}/{{.FilesChecked}} paths={{len .SuspectPaths}} checks={{len .WarningChecks}} fp={{.HasPropertyWarnings}}
+{{- end}}
+{{- with .Chkrootkit}}
+chk: {{.FindingTotal}} fp={{.FalsePositiveTotal}}{{range .Findings}} {{.FPCode}}{{end}}
+{{- end}}
+{{- with .Lynis}}
+lyn: {{.HardeningIndex}}{{range .Warnings}} {{.ID}}{{end}}
+{{- end}}
+{{- with .Unattended}}
+apt: {{if .LastSuccessTime}}{{.LastSuccessTime.Format "2006-01-02"}}{{else}}none{{end}} stale={{.Stale}}
+{{- end}}
+`) + "\n"
+
+	renderer, err := format.Parse(tmpl)
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+
+	lastOK := time.Date(2026, 11, 11, 6, 5, 54, 0, time.UTC)
+	report, err := renderer.Build(format.RunMeta{
+		RunID:       110,
+		Hostname:    "srv1",
+		GeneratedAt: time.Date(2026, 11, 13, 3, 36, 11, 0, time.UTC),
+		Location:    time.UTC,
+	}, []domain.ModuleResult{
+		{
+			Name:   "fail2ban",
+			Status: domain.ModuleStatusAttention,
+			Data:   fail2ban.Snapshot{Jails: []fail2ban.JailStatus{{Name: "sshd", CurrentlyBanned: 11, TotalBanned: 379}}},
+		},
+		{
+			Name:   "auditd",
+			Status: domain.ModuleStatusAttention,
+			Data: auditd.Snapshot{
+				Summary: auditd.Summary{FailedLogins: 346, ConfigChanges: 192},
+				Config: auditd.ConfigChangeReport{
+					HasEvents:      true,
+					EventAggregate: auditd.EventAggregate{Total: 192, ByType: map[string]int{"NETFILTER_CFG": 192}},
+				},
+			},
+		},
+		{
+			Name:   "rkhunter",
+			Status: domain.ModuleStatusAttention,
+			Data: rkhunter.ParseResult{
+				HasSummary:   true,
+				FilesChecked: 178,
+				SuspectFiles: 12,
+				Targets:      []string{"/usr/bin/ssh", "Checking if SSH root access is allowed"},
+			},
+		},
+		{
+			Name:   "chkrootkit",
+			Status: domain.ModuleStatusOK,
+			Data: chkrootkit.ParseResult{
+				FindingCount:  1,
+				FalsePositive: 1,
+				Findings:      []chkrootkit.Finding{{Line: "eth0: PACKET SNIFFER", PossibleFalsePositive: true, FPCode: "systemd_networkd"}},
+			},
+		},
+		{
+			Name:   "lynis",
+			Status: domain.ModuleStatusAttention,
+			Data: lynis.ParseResult{
+				HardeningIndex: 68,
+				WarningCount:   2,
+				Warnings: []string{
+					"- Can't find any security repository [PKGS-7388]",
+					"! Found one or more vulnerable packages. [PKGS-7392]",
+				},
+			},
+		},
+		{
+			Name:   "unattended-upgrades",
+			Status: domain.ModuleStatusOK,
+			Data:   unattendedupgrades.ParseResult{LastSuccess: &lastOK, Stale: false},
+		},
+	})
+	if err != nil {
+		t.Fatalf("Build() error = %v", err)
+	}
+
+	want := strings.Join([]string{
+		"srv1|13.11 03:36",
+		"f2b: sshd=11/379",
+		"aud: fl=346 cfg=192 nf=true",
+		"rkh: 12/178 paths=1 checks=1 fp=true",
+		"chk: 1 fp=1 systemd_networkd",
+		"lyn: 68 PKGS-7388 PKGS-7392",
+		"apt: 2026-11-11 stale=false",
+		"",
+	}, "\n")
+	if report.Body != want {
+		t.Fatalf("Body = %q, want %q", report.Body, want)
 	}
 }
 

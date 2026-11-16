@@ -3,109 +3,65 @@ package analyze_test
 import (
 	"context"
 	"errors"
-	"strings"
 	"testing"
 
 	"github.com/BrotherHugo/infra-security-monitor/internal/analyze"
 	"github.com/BrotherHugo/infra-security-monitor/internal/domain"
 )
 
-func TestAppendAll_noAnalyzers(t *testing.T) {
-	body := "ISM report\nhost: a"
-	got, errCount := analyze.AppendAll(context.Background(), body, nil, analyze.Input{})
-	if got != body {
-		t.Fatalf("body = %q, want unchanged", got)
+func TestRun_noAnalyzers(t *testing.T) {
+	got, errCount := analyze.Run(context.Background(), nil, analyze.Input{})
+	if len(got) != 0 {
+		t.Fatalf("results = %+v, want none", got)
 	}
 	if errCount != 0 {
 		t.Fatalf("errCount = %d, want 0", errCount)
 	}
 }
 
-func TestAppendAll_success(t *testing.T) {
+func TestRun_success(t *testing.T) {
 	a := &stubAnalyzer{name: "google-ai", appendix: "Summary: ok"}
-	body := "base report"
-	got, errCount := analyze.AppendAll(
-		context.Background(),
-		body,
-		[]analyze.Analyzer{a},
-		analyze.Input{},
-	)
+	got, errCount := analyze.Run(context.Background(), []analyze.Analyzer{a}, analyze.Input{})
 	if errCount != 0 {
 		t.Fatalf("errCount = %d, want 0", errCount)
 	}
-	wantSuffix := "\n=== AI analysis (google-ai) ===\nSummary: ok\n"
-	if !strings.HasSuffix(got, wantSuffix) {
-		t.Fatalf("body = %q, want suffix %q", got, wantSuffix)
-	}
-	if !strings.HasPrefix(got, body) {
-		t.Fatalf("body should keep prefix %q", body)
+	if len(got) != 1 || got[0].Name != "google-ai" || got[0].Text != "Summary: ok" || got[0].Error != "" {
+		t.Fatalf("results = %+v", got)
 	}
 }
 
-func TestAppendAll_errorAppendix(t *testing.T) {
+func TestRun_error(t *testing.T) {
 	a := &stubAnalyzer{name: "google-ai", err: errors.New("boom")}
-	got, errCount := analyze.AppendAll(
-		context.Background(),
-		"base",
-		[]analyze.Analyzer{a},
-		analyze.Input{},
-	)
+	got, errCount := analyze.Run(context.Background(), []analyze.Analyzer{a}, analyze.Input{})
 	if errCount != 1 {
 		t.Fatalf("errCount = %d, want 1", errCount)
 	}
-	want := "base\n=== AI analysis (google-ai) ===\nERROR: boom\n"
-	if got != want {
-		t.Fatalf("body = %q, want %q", got, want)
+	if len(got) != 1 || got[0].Error != "boom" || got[0].Text != "" {
+		t.Fatalf("results = %+v", got)
 	}
 }
 
-func TestAppendAll_multipleAnalyzersOrder(t *testing.T) {
-	first := &stubAnalyzer{name: "first", appendix: "one"}
+func TestRun_orderAndTrim(t *testing.T) {
+	first := &stubAnalyzer{name: "first", appendix: "  one  \n"}
 	second := &stubAnalyzer{name: "second", appendix: "two"}
-	got, errCount := analyze.AppendAll(
-		context.Background(),
-		"base",
-		[]analyze.Analyzer{first, second},
-		analyze.Input{},
-	)
-	if errCount != 0 {
-		t.Fatalf("errCount = %d, want 0", errCount)
+	got, errCount := analyze.Run(context.Background(), []analyze.Analyzer{first, second}, analyze.Input{})
+	if errCount != 0 || len(got) != 2 {
+		t.Fatalf("results = %+v errCount = %d", got, errCount)
 	}
-	firstIdx := strings.Index(got, "=== AI analysis (first) ===")
-	secondIdx := strings.Index(got, "=== AI analysis (second) ===")
-	if firstIdx < 0 || secondIdx < 0 {
-		t.Fatalf("missing headers in %q", got)
-	}
-	if firstIdx >= secondIdx {
-		t.Fatalf("wrong order: first@%d second@%d in %q", firstIdx, secondIdx, got)
+	if got[0].Name != "first" || got[0].Text != "one" || got[1].Name != "second" || got[1].Text != "two" {
+		t.Fatalf("results = %+v", got)
 	}
 }
 
-func TestAppendAll_trimsAppendixWhitespace(t *testing.T) {
-	a := &stubAnalyzer{name: "google-ai", appendix: "  text with spaces  \n\n"}
-	got, _ := analyze.AppendAll(context.Background(), "base", []analyze.Analyzer{a}, analyze.Input{})
-	if !strings.Contains(got, "=== AI analysis (google-ai) ===\ntext with spaces\n") {
-		t.Fatalf("body = %q", got)
-	}
-}
-
-func TestAppendAll_partialFailureContinues(t *testing.T) {
+func TestRun_partialFailureContinues(t *testing.T) {
 	ok := &stubAnalyzer{name: "ok", appendix: "fine"}
 	bad := &stubAnalyzer{name: "bad", err: errors.New("fail")}
-	got, errCount := analyze.AppendAll(
-		context.Background(),
-		"base",
-		[]analyze.Analyzer{bad, ok},
-		analyze.Input{},
-	)
-	if errCount != 1 {
-		t.Fatalf("errCount = %d, want 1", errCount)
+	got, errCount := analyze.Run(context.Background(), []analyze.Analyzer{bad, ok}, analyze.Input{})
+	if errCount != 1 || len(got) != 2 {
+		t.Fatalf("results = %+v errCount = %d", got, errCount)
 	}
-	if !strings.Contains(got, "ERROR: fail") {
-		t.Fatalf("missing error appendix in %q", got)
-	}
-	if !strings.Contains(got, "=== AI analysis (ok) ===\nfine") {
-		t.Fatalf("missing success appendix in %q", got)
+	if got[0].Error != "fail" || got[1].Text != "fine" {
+		t.Fatalf("results = %+v", got)
 	}
 }
 
@@ -133,7 +89,7 @@ func TestInput_carriesReportAndResults(t *testing.T) {
 	results := []domain.ModuleResult{{Name: "fail2ban", Status: domain.ModuleStatusOK}}
 	order := []string{"fail2ban"}
 
-	_, _ = analyze.AppendAll(context.Background(), "base", []analyze.Analyzer{a}, analyze.Input{
+	_, _ = analyze.Run(context.Background(), []analyze.Analyzer{a}, analyze.Input{
 		Report:      report,
 		Results:     results,
 		ModuleOrder: order,

@@ -12,6 +12,7 @@ type Finding struct {
 	Line                  string `json:"line"`
 	PossibleFalsePositive bool   `json:"possible_false_positive,omitempty"`
 	Reason                string `json:"reason,omitempty"`
+	FPCode                string `json:"fp_code,omitempty"`
 }
 
 // ParseResult is the chkrootkit log parse result.
@@ -56,8 +57,9 @@ func Parse(content string) (ParseResult, error) {
 			continue
 		}
 		finding := Finding{Line: trimmed}
-		if reason := detectFalsePositive(trimmed); reason != "" {
+		if code, reason := detectFalsePositive(trimmed); reason != "" {
 			finding.PossibleFalsePositive = true
+			finding.FPCode = code
 			finding.Reason = reason
 			result.FalsePositive++
 		}
@@ -141,16 +143,16 @@ func isSuspiciousLine(line string) bool {
 	return false
 }
 
-func detectFalsePositive(line string) string {
+func detectFalsePositive(line string) (code, reason string) {
 	lower := strings.ToLower(line)
 	if strings.Contains(lower, "fail2ban/tests") {
-		return "fail2ban test path"
+		return "fail2ban_test", "fail2ban test path"
 	}
 	if strings.Contains(lower, "packet sniffer") && strings.Contains(lower, "systemd-networkd") {
-		return "systemd-networkd sniffer"
+		return "systemd_networkd", "systemd-networkd sniffer"
 	}
 	if strings.HasPrefix(strings.TrimSpace(line), "!") && len(line) > 120 {
-		return "long chkutmp cmdline"
+		return "chkutmp_cmdline", "long chkutmp cmdline"
 	}
-	return ""
+	return "", ""
 }

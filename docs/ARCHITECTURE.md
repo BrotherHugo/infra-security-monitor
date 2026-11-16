@@ -123,17 +123,17 @@ Each package: run command or read log → store raw output in `raw_json` → par
 
 ### `internal/analyze`
 
-`Analyzer` interface. Implementations append a text section to the report body after formatting and before send.
+`Analyzer` interface. Implementations return analysis text. The report template prints it from `.Analyses`.
 
-`analyze.Input` carries `TextReport`, the slice of `ModuleResult`, and `ModuleOrder` (for raw payloads in report order). There is no separate `ReportAppendix` type.
+`analyze.Input` carries hostname and time, the slice of `ModuleResult`, and `ModuleOrder` (for raw payloads in report order). There is no separate `ReportAppendix` type.
 
-`internal/analyze/googleai` — Gemini `generateContent` client; reads full `raw_json` blobs, not compressed `section_text`. Analyzer errors become an `ERROR:` line in the appendix; delivery still proceeds.
+`internal/analyze/googleai` — Gemini `generateContent` client; reads full `raw_json` blobs, not compressed `section_text`. A failed call sets `.Analyses[].Error`; delivery still proceeds.
 
 ### `internal/format`
 
 Renders the plain-text report with `text/template`. `reporting.template` is a file path (relative paths start at the config file's directory). Empty uses the built-in `default.tmpl`.
 
-The template object has run metadata and a named field per module. Those fields are built at render time from the in-memory parse: lists capped, auditd maps turned into sorted top counts, rkhunter false-positive text in `.Note`. A module that did not run is nil. The YAML config is not passed in. Analyzer text is appended after render.
+The template object has run metadata, a named field per module, and `.Analyses`. Module fields carry only typed values (counters, timestamps, booleans, test IDs, sorted count slices, capped lists) — no preset English labels or notes from Go. A module that did not run is nil. Analyzers run before render; the built-in template prints `=== AI analysis (name) ===`. The YAML config is not passed in.
 
 ### `internal/store/sqlite`
 
@@ -169,8 +169,8 @@ One slot, in order:
 2. `BeginRun` opens the run record.
 3. For each name in `modules.enabled` (config order; empty = all modules): `Collect` → persist result or error row.
 4. `Prune` rows older than `keep_history_days`.
-5. Template renders `TextReport` (built-in or `reporting.template`).
-6. Each configured analyzer appends to `Body`.
+5. Each configured analyzer runs (raw snapshots; result is template data).
+6. Template renders `TextReport` (built-in or `reporting.template`), including `.Analyses`.
 7. Each configured channel `Send`s the same final text.
 8. `FinishRun` with aggregated status.
 
