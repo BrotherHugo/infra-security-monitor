@@ -1,3 +1,14 @@
+## 1.2.0 (2026-11-16)
+
+#### Feature
+
+* BH-10: Templating part 2 (#4) (54167722)
+
+#### Chores
+
+* **release:** v1.1.0 [skip ci] (b71cea5e)
+
+
 ## 1.1.0 (2026-11-11)
 
 #### Feature
